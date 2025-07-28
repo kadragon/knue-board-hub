@@ -3,7 +3,7 @@
  * Vue 3 Composition API for handling RSS feed data and state
  */
 
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, readonly } from 'vue'
 import { parseRSSFeed, validateRSSFeed, sortItemsByDate, filterItemsByDate } from '../utils/rssParser.js'
 import { getDepartment, generateRSSUrl, generateProxyUrl, RSS_CONFIG } from '../config/departments.js'
 

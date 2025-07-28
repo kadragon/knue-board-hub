@@ -38,7 +38,6 @@ export function parseRSSFeed(xmlText) {
       id: generateItemId(item),
       title: cleanTitle(getTextContent(item, 'title')),
       link: getTextContent(item, 'link'),
-      description: cleanDescription(getTextContent(item, 'description')),
       pubDate: parseDate(getTextContent(item, 'pubDate')),
       category: getTextContent(item, 'category'),
       author: getTextContent(item, 'author'),
@@ -98,21 +97,7 @@ function cleanTitle(title) {
     .trim()
 }
 
-/**
- * Clean and format post description
- * @param {string} description - Raw description from RSS
- * @returns {string} Cleaned description
- */
-function cleanDescription(description) {
-  if (!description) return ''
-  
-  return description
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/&[^;]+;/g, ' ') // Remove HTML entities
-    .replace(/\s+/g, ' ') // Normalize whitespace
-    .trim()
-    .substring(0, 200) // Limit length for mobile display
-}
+
 
 /**
  * Generate unique ID for RSS item

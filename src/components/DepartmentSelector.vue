@@ -98,10 +98,10 @@
         <!-- Department Info -->
         <div class="department-info">
           <h3 class="department-name">{{ department.name }}</h3>
-          <p class="department-description">{{ department.description }}</p>
+          <p v-if="!compact && showStats" class="department-description">{{ department.description }}</p>
           
-          <!-- Stats -->
-          <div v-if="showStats" class="department-stats">
+          <!-- Stats (only show in non-compact mode) -->
+          <div v-if="showStats && !compact" class="department-stats">
             <span class="stat-item">
               <i class="i-tabler-article w-3 h-3 mr-1" />
               {{ getDepartmentStats(department.id).itemCount || 0 }}개
@@ -489,6 +489,12 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+.selector-compact .grid-responsive {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
 .grid-hidden {
   display: none;
 }
@@ -496,6 +502,10 @@ onMounted(() => {
 @media (max-width: 768px) {
   .grid-responsive {
     grid-template-columns: 1fr;
+  }
+  
+  .selector-compact .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -509,6 +519,14 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   min-height: 44px;
+}
+
+/* Compact mode styling */
+.selector-compact .department-card {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border-width: 1px;
+  min-height: auto;
 }
 
 .department-card:hover {
@@ -527,6 +545,11 @@ onMounted(() => {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
+}
+
+.selector-compact .selection-indicator {
+  top: 0.25rem;
+  right: 0.25rem;
 }
 
 .checkbox-wrapper {
@@ -553,6 +576,12 @@ onMounted(() => {
   transition: all 0.2s ease;
 }
 
+.selector-compact .checkbox-label {
+  width: 1rem;
+  height: 1rem;
+  border-width: 1px;
+}
+
 .department-checkbox:checked + .checkbox-label {
   background: theme('colors.knue.primary');
   border-color: theme('colors.knue.primary');
@@ -566,6 +595,11 @@ onMounted(() => {
   text-align: center;
 }
 
+.selector-compact .department-icon {
+  font-size: 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
 .department-info {
   text-align: center;
 }
@@ -575,6 +609,11 @@ onMounted(() => {
   font-weight: 600;
   color: theme('colors.gray.900');
   margin: 0 0 0.25rem 0;
+}
+
+.selector-compact .department-name {
+  font-size: 0.75rem;
+  margin: 0;
 }
 
 .department-description {

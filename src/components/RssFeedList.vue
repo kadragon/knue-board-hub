@@ -163,7 +163,6 @@
                 v-for="item in group"
                 :key="item.id"
                 :item="item"
-                :show-description="showDescriptions"
                 :compact="compact"
                 @click="handleItemClick"
                 @share="handleItemShare"
@@ -180,7 +179,6 @@
             v-for="item in paginatedItems"
             :key="item.id"
             :item="item"
-            :show-description="showDescriptions"
             :compact="compact"
             @click="handleItemClick"
             @share="handleItemShare"
@@ -248,17 +246,6 @@
           </label>
         </div>
         
-        <div class="setting-item">
-          <label class="setting-label">
-            <input
-              :checked="showDescriptions"
-              @change="$emit('update:showDescriptions', $event.target.checked)"
-              type="checkbox"
-              class="setting-checkbox"
-            />
-            내용 미리보기
-          </label>
-        </div>
         
         <div class="setting-item">
           <label class="setting-label">
@@ -309,10 +296,6 @@ const props = defineProps({
     default: true
   },
   
-  showDescriptions: {
-    type: Boolean,
-    default: true
-  },
   
   groupByDate: {
     type: Boolean,
@@ -417,8 +400,7 @@ const filteredItems = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     items = items.filter(item =>
-      item.title.toLowerCase().includes(query) ||
-      item.description?.toLowerCase().includes(query)
+      item.title.toLowerCase().includes(query)
     )
   }
 
@@ -696,9 +678,6 @@ watch(newItemsCount, (count) => {
 .feed-header {
   background: white;
   border-bottom: 1px solid theme('colors.gray.200');
-  position: sticky;
-  top: 0;
-  z-index: 20;
 }
 
 .header-top {
@@ -706,6 +685,14 @@ watch(newItemsCount, (count) => {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .header-top {
+    padding: 0.75rem 1rem;
+  }
 }
 
 .title-section {
@@ -738,6 +725,17 @@ watch(newItemsCount, (count) => {
   padding: 1rem 1.5rem;
   border-top: 1px solid theme('colors.gray.100');
   background: theme('colors.gray.50');
+}
+
+@media (max-width: 768px) {
+  .filter-bar {
+    padding: 0.75rem 1rem;
+  }
+}
+
+.filter-bar > * {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .filter-group {
@@ -816,11 +814,18 @@ watch(newItemsCount, (count) => {
 
 /* Main Content */
 .feed-content {
-  max-width: 1024px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
   padding-top: 1rem;
   padding-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .feed-content {
+    padding-top: 0.75rem;
+    padding-bottom: 1rem;
+  }
 }
 
 @media (min-width: 640px) {
@@ -829,6 +834,15 @@ watch(newItemsCount, (count) => {
     padding-right: 1.5rem;
     padding-top: 1.5rem;
     padding-bottom: 2.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .feed-content {
+    padding-left: 2rem;
+    padding-right: 2rem;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
   }
 }
 
@@ -841,6 +855,14 @@ watch(newItemsCount, (count) => {
   border-radius: 0.75rem;
   margin-bottom: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 1024px) {
+  .stats-summary {
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-radius: 1rem;
+  }
 }
 
 .stat-item {
@@ -881,7 +903,39 @@ watch(newItemsCount, (count) => {
 
 .group-items,
 .simple-items {
-  space-y: 1rem;
+  gap: 1rem;
+}
+
+/* Mobile: Single column layout */
+.simple-items {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Desktop: Two column grid layout */
+@media (min-width: 1024px) {
+  .simple-items {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+  
+  .group-items {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+/* Large desktop: Three column grid layout */
+@media (min-width: 1400px) {
+  .simple-items {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .group-items {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* Load More */
