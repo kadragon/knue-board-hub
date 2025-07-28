@@ -3,7 +3,7 @@
  * Handles user notifications for RSS feed updates and errors
  */
 
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, readonly } from 'vue'
 import { createErrorNotification } from '../utils/errorHandler.js'
 
 /**

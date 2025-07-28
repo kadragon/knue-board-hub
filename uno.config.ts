@@ -234,6 +234,18 @@ export default defineConfig({
     'animate-spin', 'animate-pulse', 'animate-bounce',
     
     // Touch states
-    'active:scale-95', 'active:scale-98', 'active:bg-gray-50'
+    'active:scale-95', 'active:scale-98', 'active:bg-gray-50',
+    
+    // Navigation icons
+    'i-tabler-school', 'i-tabler-home', 'i-tabler-building', 'i-tabler-building-bank',
+    'i-tabler-settings', 'i-tabler-info-circle', 'i-tabler-code',
+    'i-tabler-menu-2', 'i-tabler-x', 'i-tabler-bookmark', 'i-tabler-bookmark-filled',
+    'i-tabler-layout-dashboard', 'i-tabler-news',
+    
+    // RSS item action icons
+    'i-tabler-share', 'i-tabler-external-link',
+    
+    // Icon sizes
+    'w-5', 'h-5', 'w-4', 'h-4'
   ]
 })

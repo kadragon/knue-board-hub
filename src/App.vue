@@ -41,22 +41,24 @@
 
           <!-- Mobile Navigation Menu -->
           <Transition name="mobile-menu">
-            <div v-if="mobileMenuOpen" class="mobile-nav mobile-only">
-              <div class="mobile-nav-content">
-                <router-link
-                  v-for="route in navRoutes"
-                  :key="`mobile-${route.name}`"
-                  :to="{ name: route.name }"
-                  class="mobile-nav-link"
-                  :class="{ 'nav-active': isCurrentRoute(route.name) }"
-                  @click="closeMobileMenu"
-                >
-                  <i :class="route.meta.icon" class="w-5 h-5 mr-3" />
-                  <div class="link-content">
-                    <span class="link-title">{{ route.meta.title }}</span>
-                    <span class="link-description">{{ route.meta.description }}</span>
-                  </div>
-                </router-link>
+            <div v-if="mobileMenuOpen" class="mobile-nav-overlay mobile-only" @click="closeMobileMenu">
+              <div class="mobile-nav" @click.stop>
+                <div class="mobile-nav-content">
+                  <router-link
+                    v-for="route in navRoutes"
+                    :key="`mobile-${route.name}`"
+                    :to="{ name: route.name }"
+                    class="mobile-nav-link"
+                    :class="{ 'nav-active': isCurrentRoute(route.name) }"
+                    @click="closeMobileMenu"
+                  >
+                    <i :class="route.meta.icon" class="w-5 h-5 mr-3" />
+                    <div class="link-content">
+                      <span class="link-title">{{ route.meta.title }}</span>
+                      <span class="link-description">{{ route.meta.description }}</span>
+                    </div>
+                  </router-link>
+                </div>
               </div>
             </div>
           </Transition>
@@ -526,21 +528,36 @@ if (import.meta.env.DEV) {
   color: theme('colors.gray.900');
 }
 
+/* Mobile Navigation Overlay */
+.mobile-nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 35;
+  backdrop-filter: blur(4px);
+}
+
 /* Mobile Navigation */
 .mobile-nav {
   position: absolute;
-  top: 100%;
+  top: calc(64px + env(safe-area-inset-top, 0px));
   left: 0;
   right: 0;
   background: white;
   border-bottom: 1px solid theme('colors.gray.200');
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-height: calc(100vh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
 }
 
 .mobile-nav-content {
   padding: 1rem;
   max-width: 1200px;
   margin: 0 auto;
+  min-height: fit-content;
 }
 
 .mobile-nav-link {
@@ -814,10 +831,26 @@ if (import.meta.env.DEV) {
     display: none;
   }
   
+  .mobile-nav {
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    max-height: calc(100vh - 56px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+  
   .mobile-nav-link {
-    flex-direction: column;
-    text-align: center;
-    gap: 0.5rem;
+    padding: 1rem 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .link-content {
+    gap: 0.125rem;
+  }
+  
+  .link-title {
+    font-size: 0.875rem;
+  }
+  
+  .link-description {
+    font-size: 0.75rem;
   }
 }
 

@@ -1,10 +1,9 @@
 <template>
   <div class="home-view">
     <RssFeedList
-      :compact="false"
+      :compact="true"
       :show-filters="true"
-      :show-stats="true"
-      :show-descriptions="true"
+      :show-stats="false"
       :group-by-date="false"
       :infinite-scroll="true"
       :items-per-page="20"

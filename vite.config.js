@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     proxy: {
       // CORS proxy for RSS feeds during development
-      '/api/proxy/rss': {
+      '/api/rss': {
         target: 'https://www.knue.ac.kr',
         changeOrigin: true,
         rewrite: (path) => {
