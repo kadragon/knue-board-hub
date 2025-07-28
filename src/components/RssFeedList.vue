@@ -10,7 +10,7 @@
           </h1>
           <p class="app-subtitle">한국교원대학교 통합 공지사항</p>
         </div>
-        
+
         <div class="header-actions">
           <RefreshButton
             :loading="isRefreshing"
@@ -86,7 +86,8 @@
             @click="dateFilter = 'all'"
             class="filter-tag"
           >
-            {{ getDateFilterLabel(dateFilter) }} <i class="i-tabler-x w-3 h-3 ml-1" />
+            {{ getDateFilterLabel(dateFilter) }}
+            <i class="i-tabler-x w-3 h-3 ml-1" />
           </button>
         </div>
       </div>
@@ -157,7 +158,7 @@
               {{ formatDateGroupHeader(date) }}
               <span class="item-count">({{ group.length }}개)</span>
             </h3>
-            
+
             <div class="group-items">
               <RssItem
                 v-for="item in group"
@@ -194,12 +195,16 @@
             :disabled="isLoadingMore"
             class="btn-secondary w-full btn-touch"
           >
-            <i 
-              v-if="isLoadingMore" 
-              class="i-tabler-loader-2 w-4 h-4 animate-spin mr-2" 
+            <i
+              v-if="isLoadingMore"
+              class="i-tabler-loader-2 w-4 h-4 animate-spin mr-2"
             />
             <i v-else class="i-tabler-plus w-4 h-4 mr-2" />
-            {{ isLoadingMore ? '로딩 중...' : `더 보기 (${remainingItems}개 남음)` }}
+            {{
+              isLoadingMore
+                ? "로딩 중..."
+                : `더 보기 (${remainingItems}개 남음)`
+            }}
           </button>
         </div>
 
@@ -225,14 +230,15 @@
     </div>
 
     <!-- Quick Settings Panel -->
-    <div v-if="showQuickSettings" class="quick-settings" :class="{ 'settings-open': settingsOpen }">
-      <button
-        @click="toggleSettings"
-        class="settings-toggle"
-      >
+    <div
+      v-if="showQuickSettings"
+      class="quick-settings"
+      :class="{ 'settings-open': settingsOpen }"
+    >
+      <button @click="toggleSettings" class="settings-toggle">
         <i class="i-tabler-settings w-5 h-5" />
       </button>
-      
+
       <div v-if="settingsOpen" class="settings-panel">
         <div class="setting-item">
           <label class="setting-label">
@@ -245,8 +251,7 @@
             자동 새로고침
           </label>
         </div>
-        
-        
+
         <div class="setting-item">
           <label class="setting-label">
             <input
@@ -264,71 +269,77 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRssFeed } from '../composables/useRssFeed.js'
-import { useGlobalNotifications } from '../composables/useNotifications.js'
-import { getDefaultDepartments, getAllDepartments } from '../config/departments.js'
-import { groupByDateCategory, isToday, formatDateForMobile } from '../utils/dateUtils.js'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
+import { useRssFeed } from "../composables/useRssFeed.js";
+import { useGlobalNotifications } from "../composables/useNotifications.js";
+import {
+  getDefaultDepartments,
+  getAllDepartments,
+} from "../config/departments.js";
+import {
+  groupByDateCategory,
+  isToday,
+  formatDateForMobile,
+} from "../utils/dateUtils.js";
 
 // Components
-import RssItem from './RssItem.vue'
-import DepartmentSelector from './DepartmentSelector.vue'
-import LoadingSpinner from './LoadingSpinner.vue'
-import EmptyState from './EmptyState.vue'
-import RefreshButton from './RefreshButton.vue'
+import RssItem from "./RssItem.vue";
+import DepartmentSelector from "./DepartmentSelector.vue";
+import LoadingSpinner from "./LoadingSpinner.vue";
+import EmptyState from "./EmptyState.vue";
+import RefreshButton from "./RefreshButton.vue";
 
 // Props
 const props = defineProps({
   // Layout
   compact: {
     type: Boolean,
-    default: false
+    default: false,
   },
-  
+
   // Features
   showFilters: {
     type: Boolean,
-    default: true
+    default: true,
   },
-  
+
   showStats: {
     type: Boolean,
-    default: true
+    default: true,
   },
-  
-  
+
   groupByDate: {
     type: Boolean,
-    default: false
+    default: false,
   },
-  
+
   infiniteScroll: {
     type: Boolean,
-    default: true
+    default: true,
   },
-  
+
   itemsPerPage: {
     type: Number,
-    default: 20
+    default: 20,
   },
-  
+
   // Mobile features
   showFab: {
     type: Boolean,
-    default: true
+    default: true,
   },
-  
+
   showQuickSettings: {
     type: Boolean,
-    default: true
+    default: true,
   },
-  
+
   // Auto features
   autoRefresh: {
     type: Boolean,
-    default: false
-  }
-})
+    default: false,
+  },
+});
 
 // Composables
 const {
@@ -338,336 +349,335 @@ const {
   lastUpdate,
   fetchFeeds,
   refreshFeeds,
-  hasErrors
+  hasErrors,
 } = useRssFeed({
   autoRefresh: props.autoRefresh,
-  refreshInterval: 5 * 60 * 1000 // 5 minutes
-})
+  refreshInterval: 5 * 60 * 1000, // 5 minutes
+});
 
-const { showSuccess, showError, showFeedUpdate } = useGlobalNotifications()
+const { showSuccess, showError, showFeedUpdate } = useGlobalNotifications();
 
 // State
-const selectedDepartments = ref(getDefaultDepartments().map(d => d.id))
-const searchQuery = ref('')
-const dateFilter = ref('all')
-const sortOption = ref('date-desc')
-const currentPage = ref(1)
-const isRefreshing = ref(false)
-const isLoadingMore = ref(false)
-const settingsOpen = ref(false)
-const showScrollToTop = ref(false)
-const newItemsCount = ref(0)
+const selectedDepartments = ref(getDefaultDepartments().map((d) => d.id));
+const searchQuery = ref("");
+const dateFilter = ref("all");
+const sortOption = ref("date-desc");
+const currentPage = ref(1);
+const isRefreshing = ref(false);
+const isLoadingMore = ref(false);
+const settingsOpen = ref(false);
+const showScrollToTop = ref(false);
+const newItemsCount = ref(0);
 
 // Refs
-const infiniteScrollTrigger = ref(null)
+const infiniteScrollTrigger = ref(null);
 
 // Computed
 const containerClass = computed(() => {
-  const classes = []
-  if (props.compact) classes.push('feed-compact')
-  return classes
-})
+  const classes = [];
+  if (props.compact) classes.push("feed-compact");
+  return classes;
+});
 
-const isInitialLoading = computed(() => 
-  loading.value && allItems.value.length === 0
-)
+const isInitialLoading = computed(
+  () => loading.value && allItems.value.length === 0
+);
 
-const isLoading = computed(() => loading.value)
+const isLoading = computed(() => loading.value);
 
-const hasError = computed(() => hasErrors.value)
+const hasError = computed(() => hasErrors.value);
 
 const errorMessage = computed(() => {
-  const errorArray = Array.from(errors.value.values())
-  return errorArray[0]?.message || '알 수 없는 오류가 발생했습니다'
-})
+  const errorArray = Array.from(errors.value.values());
+  return errorArray[0]?.message || "알 수 없는 오류가 발생했습니다";
+});
 
-const lastUpdateTime = computed(() => lastUpdate.value)
+const lastUpdateTime = computed(() => lastUpdate.value);
 
 const loadingProgress = computed(() => {
   // Simulate loading progress
-  return loading.value ? Math.min(90, 30 + (Date.now() % 60)) : 100
-})
+  return loading.value ? Math.min(90, 30 + (Date.now() % 60)) : 100;
+});
 
-const hasActiveFilters = computed(() => 
-  searchQuery.value || dateFilter.value !== 'all'
-)
+const hasActiveFilters = computed(
+  () => searchQuery.value || dateFilter.value !== "all"
+);
 
 // Filter and sort items
 const filteredItems = computed(() => {
-  let items = [...allItems.value]
+  let items = [...allItems.value];
 
   // Search filter
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    items = items.filter(item =>
-      item.title.toLowerCase().includes(query)
-    )
+    const query = searchQuery.value.toLowerCase();
+    items = items.filter((item) => item.title.toLowerCase().includes(query));
   }
 
   // Date filter
-  if (dateFilter.value !== 'all') {
-    const now = new Date()
-    items = items.filter(item => {
-      if (!item.pubDate) return false
-      const itemDate = new Date(item.pubDate)
-      
+  if (dateFilter.value !== "all") {
+    const now = new Date();
+    items = items.filter((item) => {
+      if (!item.pubDate) return false;
+      const itemDate = new Date(item.pubDate);
+
       switch (dateFilter.value) {
-        case 'today':
-          return isToday(itemDate)
-        case 'week':
-          return (now - itemDate) <= 7 * 24 * 60 * 60 * 1000
-        case 'month':
-          return (now - itemDate) <= 30 * 24 * 60 * 60 * 1000
+        case "today":
+          return isToday(itemDate);
+        case "week":
+          return now - itemDate <= 7 * 24 * 60 * 60 * 1000;
+        case "month":
+          return now - itemDate <= 30 * 24 * 60 * 60 * 1000;
         default:
-          return true
+          return true;
       }
-    })
+    });
   }
 
   // Sort
   switch (sortOption.value) {
-    case 'date-asc':
-      items.sort((a, b) => new Date(a.pubDate) - new Date(b.pubDate))
-      break
-    case 'department':
-      items.sort((a, b) => a.department?.name.localeCompare(b.department?.name))
-      break
+    case "date-asc":
+      items.sort((a, b) => new Date(a.pubDate) - new Date(b.pubDate));
+      break;
+    case "department":
+      items.sort((a, b) =>
+        a.department?.name.localeCompare(b.department?.name)
+      );
+      break;
     default: // date-desc
-      items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
+      items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
   }
 
-  return items
-})
+  return items;
+});
 
 const paginatedItems = computed(() => {
-  const endIndex = currentPage.value * props.itemsPerPage
-  return filteredItems.value.slice(0, endIndex)
-})
+  const endIndex = currentPage.value * props.itemsPerPage;
+  return filteredItems.value.slice(0, endIndex);
+});
 
 const groupedItems = computed(() => {
-  if (!props.groupByDate) return {}
-  return groupByDateCategory(filteredItems.value)
-})
+  if (!props.groupByDate) return {};
+  return groupByDateCategory(filteredItems.value);
+});
 
-const showLoadMore = computed(() => 
-  !props.infiniteScroll && 
-  paginatedItems.value.length < filteredItems.value.length
-)
+const showLoadMore = computed(
+  () =>
+    !props.infiniteScroll &&
+    paginatedItems.value.length < filteredItems.value.length
+);
 
-const remainingItems = computed(() => 
-  filteredItems.value.length - paginatedItems.value.length
-)
+const remainingItems = computed(
+  () => filteredItems.value.length - paginatedItems.value.length
+);
 
 // Stats
-const totalItems = computed(() => filteredItems.value.length)
-const newItemsToday = computed(() => 
-  filteredItems.value.filter(item => isToday(item.pubDate)).length
-)
-const activeDepartmentCount = computed(() => selectedDepartments.value.length)
+const totalItems = computed(() => filteredItems.value.length);
+const newItemsToday = computed(
+  () => filteredItems.value.filter((item) => isToday(item.pubDate)).length
+);
+const activeDepartmentCount = computed(() => selectedDepartments.value.length);
 
 // Department data
-const loadingDepartments = computed(() => 
-  selectedDepartments.value.filter(id => loading.value)
-)
+const loadingDepartments = computed(() =>
+  selectedDepartments.value.filter((id) => loading.value)
+);
 
-const errorDepartments = computed(() => 
-  Array.from(errors.value.keys())
-)
+const errorDepartments = computed(() => Array.from(errors.value.keys()));
 
 const departmentStats = computed(() => {
-  const stats = {}
-  selectedDepartments.value.forEach(id => {
-    const items = allItems.value.filter(item => item.departmentId === id)
+  const stats = {};
+  selectedDepartments.value.forEach((id) => {
+    const items = allItems.value.filter((item) => item.departmentId === id);
     stats[id] = {
       itemCount: items.length,
-      lastUpdate: lastUpdate.value
-    }
-  })
-  return stats
-})
+      lastUpdate: lastUpdate.value,
+    };
+  });
+  return stats;
+});
 
 const departmentErrors = computed(() => {
-  const errorObj = {}
+  const errorObj = {};
   errors.value.forEach((error, departmentId) => {
-    errorObj[departmentId] = error
-  })
-  return errorObj
-})
+    errorObj[departmentId] = error;
+  });
+  return errorObj;
+});
 
 // Methods
 async function handleRefresh() {
-  if (isRefreshing.value) return
-  
-  isRefreshing.value = true
-  const previousCount = allItems.value.length
-  
+  if (isRefreshing.value) return;
+
+  isRefreshing.value = true;
+  const previousCount = allItems.value.length;
+
   try {
-    await refreshFeeds()
-    
-    const newCount = allItems.value.length - previousCount
+    await refreshFeeds();
+
+    const newCount = allItems.value.length - previousCount;
     if (newCount > 0) {
-      newItemsCount.value = newCount
-      showFeedUpdate('전체 게시판', newCount)
+      newItemsCount.value = newCount;
+      showFeedUpdate("전체 게시판", newCount);
     } else {
-      showSuccess('게시판이 최신 상태입니다')
+      showSuccess("게시판이 최신 상태입니다");
     }
   } catch (error) {
-    showError(error)
+    showError(error);
   } finally {
-    isRefreshing.value = false
+    isRefreshing.value = false;
   }
 }
 
 async function handlePullRefresh() {
-  await handleRefresh()
+  await handleRefresh();
 }
 
 async function handleDepartmentChange({ selected }) {
-  selectedDepartments.value = selected
-  await fetchFeeds(selected)
+  selectedDepartments.value = selected;
+  await fetchFeeds(selected);
 }
 
 async function handleDepartmentApply({ selected }) {
-  await fetchFeeds(selected)
-  showSuccess(`${selected.length}개 게시판이 적용되었습니다`)
+  await fetchFeeds(selected);
+  showSuccess(`${selected.length}개 게시판이 적용되었습니다`);
 }
 
 function handleItemClick(item) {
-  console.log('Item clicked:', item)
+  console.log("Item clicked:", item);
 }
 
 function handleItemShare(item) {
-  showSuccess('링크가 공유되었습니다')
+  showSuccess("링크가 공유되었습니다");
 }
 
 function handleItemBookmark({ item, bookmarked }) {
   if (bookmarked) {
-    showSuccess('북마크에 추가되었습니다')
+    showSuccess("북마크에 추가되었습니다");
   } else {
-    showSuccess('북마크에서 제거되었습니다')
+    showSuccess("북마크에서 제거되었습니다");
   }
 }
 
 function handleItemRead(item) {
-  console.log('Item marked as read:', item)
+  console.log("Item marked as read:", item);
 }
 
 function loadMore() {
-  if (isLoadingMore.value) return
-  
-  isLoadingMore.value = true
+  if (isLoadingMore.value) return;
+
+  isLoadingMore.value = true;
   setTimeout(() => {
-    currentPage.value++
-    isLoadingMore.value = false
-  }, 500)
+    currentPage.value++;
+    isLoadingMore.value = false;
+  }, 500);
 }
 
 function clearFilters() {
-  searchQuery.value = ''
-  dateFilter.value = 'all'
-  sortOption.value = 'date-desc'
+  searchQuery.value = "";
+  dateFilter.value = "all";
+  sortOption.value = "date-desc";
 }
 
 function scrollToTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function toggleSettings() {
-  settingsOpen.value = !settingsOpen.value
+  settingsOpen.value = !settingsOpen.value;
 }
 
 function getEmptyStateTitle() {
   if (hasActiveFilters.value) {
-    return '검색 결과가 없습니다'
+    return "검색 결과가 없습니다";
   }
-  return '표시할 게시글이 없습니다'
+  return "표시할 게시글이 없습니다";
 }
 
 function getEmptyStateDescription() {
   if (hasActiveFilters.value) {
-    return '다른 검색어나 필터를 시도해보세요'
+    return "다른 검색어나 필터를 시도해보세요";
   }
-  return '선택한 게시판에 새로운 게시글이 없습니다'
+  return "선택한 게시판에 새로운 게시글이 없습니다";
 }
 
 function getDateFilterLabel(filter) {
   const labels = {
-    today: '오늘',
-    week: '이번 주',
-    month: '이번 달'
-  }
-  return labels[filter] || filter
+    today: "오늘",
+    week: "이번 주",
+    month: "이번 달",
+  };
+  return labels[filter] || filter;
 }
 
 function formatDateGroupHeader(date) {
   const labels = {
-    today: '오늘',
-    yesterday: '어제',
-    'this-week': '이번 주',
-    older: '이전'
-  }
-  return labels[date] || date
+    today: "오늘",
+    yesterday: "어제",
+    "this-week": "이번 주",
+    older: "이전",
+  };
+  return labels[date] || date;
 }
 
 // Infinite scroll
 function setupInfiniteScroll() {
-  if (!props.infiniteScroll || !infiniteScrollTrigger.value) return
+  if (!props.infiniteScroll || !infiniteScrollTrigger.value) return;
 
   const observer = new IntersectionObserver(
     (entries) => {
       if (entries[0].isIntersecting && !isLoadingMore.value) {
-        loadMore()
+        loadMore();
       }
     },
     { threshold: 0.1 }
-  )
+  );
 
-  observer.observe(infiniteScrollTrigger.value)
-  
-  return () => observer.disconnect()
+  observer.observe(infiniteScrollTrigger.value);
+
+  return () => observer.disconnect();
 }
 
 // Scroll handling
 function handleScroll() {
-  showScrollToTop.value = window.scrollY > 300
+  showScrollToTop.value = window.scrollY > 300;
 }
 
 // Lifecycle
 onMounted(async () => {
   // Initial load
-  await fetchFeeds(selectedDepartments.value)
-  
+  await fetchFeeds(selectedDepartments.value);
+
   // Setup infinite scroll
   if (props.infiniteScroll) {
     nextTick(() => {
-      const cleanup = setupInfiniteScroll()
-      onUnmounted(cleanup)
-    })
+      const cleanup = setupInfiniteScroll();
+      onUnmounted(cleanup);
+    });
   }
-  
+
   // Setup scroll listener
-  window.addEventListener('scroll', handleScroll)
-})
+  window.addEventListener("scroll", handleScroll);
+});
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
+  window.removeEventListener("scroll", handleScroll);
+});
 
 // Reset new items count after some time
 watch(newItemsCount, (count) => {
   if (count > 0) {
     setTimeout(() => {
-      newItemsCount.value = 0
-    }, 10000) // Reset after 10 seconds
+      newItemsCount.value = 0;
+    }, 10000); // Reset after 10 seconds
   }
-})
+});
 </script>
 
 <style scoped>
 /* Container */
 .rss-feed-list {
   min-height: 100vh;
-  background: theme('colors.gray.50');
+  background: theme("colors.gray.50");
 }
 
 .feed-compact {
@@ -677,7 +687,7 @@ watch(newItemsCount, (count) => {
 /* Header */
 .feed-header {
   background: white;
-  border-bottom: 1px solid theme('colors.gray.200');
+  border-bottom: 1px solid theme("colors.gray.200");
 }
 
 .header-top {
@@ -704,13 +714,13 @@ watch(newItemsCount, (count) => {
   align-items: center;
   font-size: 1.5rem;
   font-weight: 700;
-  color: theme('colors.gray.900');
+  color: theme("colors.gray.900");
   margin: 0 0 0.25rem 0;
 }
 
 .app-subtitle {
   font-size: 0.875rem;
-  color: theme('colors.gray.600');
+  color: theme("colors.gray.600");
   margin: 0;
 }
 
@@ -723,8 +733,8 @@ watch(newItemsCount, (count) => {
 /* Filter Bar */
 .filter-bar {
   padding: 1rem 1.5rem;
-  border-top: 1px solid theme('colors.gray.100');
-  background: theme('colors.gray.50');
+  border-top: 1px solid theme("colors.gray.100");
+  background: theme("colors.gray.50");
 }
 
 @media (max-width: 768px) {
@@ -754,7 +764,7 @@ watch(newItemsCount, (count) => {
 .search-input {
   width: 100%;
   padding: 0.75rem 1rem 0.75rem 2.5rem;
-  border: 1px solid theme('colors.gray.300');
+  border: 1px solid theme("colors.gray.300");
   border-radius: 0.5rem;
   font-size: 0.875rem;
   background: white;
@@ -762,7 +772,7 @@ watch(newItemsCount, (count) => {
 
 .search-input:focus {
   outline: none;
-  border-color: theme('colors.knue.primary');
+  border-color: theme("colors.knue.primary");
   box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
 }
 
@@ -773,17 +783,31 @@ watch(newItemsCount, (count) => {
   transform: translateY(-50%);
   width: 1rem;
   height: 1rem;
-  color: theme('colors.gray.400');
+  color: theme("colors.gray.400");
 }
 
 .date-filter,
 .sort-select {
   padding: 0.75rem;
-  border: 1px solid theme('colors.gray.300');
+  border: 1px solid theme("colors.gray.300");
   border-radius: 0.5rem;
   font-size: 0.875rem;
   background: white;
   min-width: 120px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.date-filter:focus,
+.sort-select:focus {
+  outline: none;
+  border-color: theme("colors.knue.primary");
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.date-filter:hover,
+.sort-select:hover {
+  border-color: theme("colors.gray.400");
 }
 
 .active-filters {
@@ -796,7 +820,7 @@ watch(newItemsCount, (count) => {
 
 .filter-label {
   font-size: 0.875rem;
-  color: theme('colors.gray.600');
+  color: theme("colors.gray.600");
   font-weight: 500;
 }
 
@@ -804,7 +828,7 @@ watch(newItemsCount, (count) => {
   display: flex;
   align-items: center;
   padding: 0.25rem 0.5rem;
-  background: theme('colors.knue.primary');
+  background: theme("colors.knue.primary");
   color: white;
   border-radius: 1rem;
   font-size: 0.75rem;
@@ -869,12 +893,14 @@ watch(newItemsCount, (count) => {
   display: flex;
   align-items: center;
   font-size: 0.875rem;
-  color: theme('colors.gray.600');
+  color: theme("colors.gray.600");
 }
 
 /* Feed Items */
 .feed-items {
-  space-y: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .date-group {
@@ -886,18 +912,18 @@ watch(newItemsCount, (count) => {
   align-items: center;
   font-size: 1.125rem;
   font-weight: 600;
-  color: theme('colors.gray.900');
+  color: theme("colors.gray.900");
   margin: 0 0 1rem 0;
   padding: 0.75rem 1rem;
   background: white;
   border-radius: 0.5rem;
-  border-left: 4px solid theme('colors.knue.primary');
+  border-left: 4px solid theme("colors.knue.primary");
 }
 
 .item-count {
   margin-left: auto;
   font-size: 0.875rem;
-  color: theme('colors.gray.500');
+  color: theme("colors.gray.500");
   font-weight: 400;
 }
 
@@ -919,7 +945,7 @@ watch(newItemsCount, (count) => {
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
   }
-  
+
   .group-items {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -932,7 +958,7 @@ watch(newItemsCount, (count) => {
   .simple-items {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   .group-items {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -963,7 +989,7 @@ watch(newItemsCount, (count) => {
   justify-content: center;
   width: 3.5rem;
   height: 3.5rem;
-  background: theme('colors.knue.primary');
+  background: theme("colors.knue.primary");
   color: white;
   border: none;
   border-radius: 50%;
@@ -1001,7 +1027,7 @@ watch(newItemsCount, (count) => {
   width: 3rem;
   height: 3rem;
   background: white;
-  border: 1px solid theme('colors.gray.300');
+  border: 1px solid theme("colors.gray.300");
   border-radius: 50%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
@@ -1009,7 +1035,7 @@ watch(newItemsCount, (count) => {
 }
 
 .settings-toggle:hover {
-  background: theme('colors.gray.50');
+  background: theme("colors.gray.50");
 }
 
 .settings-panel {
@@ -1018,7 +1044,7 @@ watch(newItemsCount, (count) => {
   left: 0;
   margin-bottom: 0.5rem;
   background: white;
-  border: 1px solid theme('colors.gray.200');
+  border: 1px solid theme("colors.gray.200");
   border-radius: 0.75rem;
   padding: 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -1037,13 +1063,13 @@ watch(newItemsCount, (count) => {
   display: flex;
   align-items: center;
   font-size: 0.875rem;
-  color: theme('colors.gray.700');
+  color: theme("colors.gray.700");
   cursor: pointer;
 }
 
 .setting-checkbox {
   margin-right: 0.5rem;
-  accent-color: theme('colors.knue.primary');
+  accent-color: theme("colors.knue.primary");
 }
 
 /* Responsive Design */
@@ -1051,29 +1077,37 @@ watch(newItemsCount, (count) => {
   .header-top {
     padding: 1rem;
   }
-  
+
   .app-title {
     font-size: 1.25rem;
   }
-  
+
   .filter-bar {
     padding: 1rem;
   }
-  
+
   .filter-group {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
   }
-  
+
   .search-wrapper {
     order: -1;
+    min-width: unset;
   }
-  
+
+  .date-filter,
+  .sort-select {
+    width: 100%;
+    min-width: unset;
+  }
+
   .stats-summary {
     flex-direction: column;
     gap: 0.75rem;
   }
-  
+
   .date-header {
     font-size: 1rem;
     padding: 0.5rem 0.75rem;
@@ -1083,29 +1117,29 @@ watch(newItemsCount, (count) => {
 /* Dark Mode Support */
 @media (prefers-color-scheme: dark) {
   .rss-feed-list {
-    background: theme('colors.gray.900');
+    background: theme("colors.gray.900");
   }
-  
+
   .feed-header {
-    background: theme('colors.gray.800');
-    border-color: theme('colors.gray.700');
+    background: theme("colors.gray.800");
+    border-color: theme("colors.gray.700");
   }
-  
+
   .app-title {
-    color: theme('colors.gray.100');
+    color: theme("colors.gray.100");
   }
-  
+
   .app-subtitle {
-    color: theme('colors.gray.400');
+    color: theme("colors.gray.400");
   }
-  
+
   .stats-summary {
-    background: theme('colors.gray.800');
+    background: theme("colors.gray.800");
   }
-  
+
   .date-header {
-    background: theme('colors.gray.800');
-    color: theme('colors.gray.100');
+    background: theme("colors.gray.800");
+    color: theme("colors.gray.100");
   }
 }
 </style>
