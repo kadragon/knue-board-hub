@@ -48,11 +48,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getDepartment } from '../config/departments.js'
+import { useDepartments } from '../composables/useDepartments.js'
 import { useRssFeed } from '../composables/useRssFeed.js'
 import RssFeedList from '../components/RssFeedList.vue'
 
 const route = useRoute()
+const { getDepartment } = useDepartments()
 const departmentId = computed(() => route.params.id)
 const department = computed(() => getDepartment(departmentId.value))
 

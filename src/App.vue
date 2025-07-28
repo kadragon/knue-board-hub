@@ -68,15 +68,15 @@
       <!-- Main Content Area -->
       <main class="app-main" :class="mainClass">
         <!-- Route Transition -->
-        <Transition :name="transitionName" mode="out-in">
-          <router-view v-slot="{ Component, route }">
+        <router-view v-slot="{ Component, route }">
+          <Transition :name="transitionName" mode="out-in">
             <component 
               :is="Component" 
               :key="route.path"
               class="route-component"
             />
-          </router-view>
-        </Transition>
+          </Transition>
+        </router-view>
       </main>
 
       <!-- Bottom Navigation (Mobile) -->

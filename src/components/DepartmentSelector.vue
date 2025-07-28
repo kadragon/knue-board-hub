@@ -177,8 +177,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { getAllDepartments, getDefaultDepartments } from '../config/departments.js'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { useDepartments } from '../composables/useDepartments.js'
 import { formatDateForMobile } from '../utils/dateUtils.js'
 
 // Props
@@ -249,8 +249,9 @@ const expanded = ref(false)
 const applying = ref(false)
 const initialSelection = ref([...props.modelValue])
 
-// Data
-const departments = ref(getAllDepartments())
+// Use departments from API
+const { departments: allDepartments, loading: departmentsLoading, fetchDepartments, getDefaultDepartments } = useDepartments()
+const departments = computed(() => allDepartments.value)
 const selectionModes = [
   { value: 'default', label: '일반', icon: 'i-tabler-list' },
   { value: 'priority', label: '중요도순', icon: 'i-tabler-star' },
@@ -362,8 +363,13 @@ function formatLastUpdate(date) {
   return formatDateForMobile(date)
 }
 
+// Prevent circular updates
+let isUpdatingFromParent = false
+
 // Watchers
 watch(selectedDepartmentIds, (newValue) => {
+  if (isUpdatingFromParent) return
+  
   emit('update:modelValue', newValue)
   emit('selection-change', {
     selected: newValue,
@@ -373,7 +379,18 @@ watch(selectedDepartmentIds, (newValue) => {
 }, { deep: true })
 
 watch(() => props.modelValue, (newValue) => {
+  // Prevent circular updates by checking if values are actually different
+  if (JSON.stringify(newValue) === JSON.stringify(selectedDepartmentIds.value)) {
+    return
+  }
+  
+  isUpdatingFromParent = true
   selectedDepartmentIds.value = [...newValue]
+  
+  // Reset flag on next tick
+  nextTick(() => {
+    isUpdatingFromParent = false
+  })
 }, { deep: true })
 
 // Lifecycle

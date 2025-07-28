@@ -188,11 +188,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getAllDepartments } from '../config/departments.js'
+import { useDepartments } from '../composables/useDepartments.js'
 import { useNotifications } from '../composables/useNotifications.js'
 import EmptyState from '../components/EmptyState.vue'
 
 const { showError } = useNotifications()
+const { departments: allDepartments } = useDepartments()
 
 // Search state
 const searchQuery = ref('')
@@ -204,7 +205,7 @@ const loadingMore = ref(false)
 const hasMoreResults = ref(false)
 
 // Filters
-const selectedDepartments = ref(['main', 'academic', 'employment'])
+const selectedDepartments = ref(['main', 'academic', 'scholarship'])
 const searchInTitle = ref(true)
 const searchInContent = ref(true)
 const sortBy = ref('relevance')
@@ -307,7 +308,7 @@ async function loadMoreResults() {
 }
 
 function generateMockResults(query, offset = 0) {
-  const departments = getAllDepartments()
+  const departments = allDepartments.value
   const results = []
   
   for (let i = 0; i < 10; i++) {
@@ -352,7 +353,7 @@ function loadRecentSearches() {
 }
 
 onMounted(() => {
-  availableDepartments.value = getAllDepartments()
+  availableDepartments.value = allDepartments.value
   loadRecentSearches()
 })
 </script>

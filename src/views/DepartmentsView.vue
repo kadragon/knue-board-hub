@@ -141,11 +141,7 @@ import { useRouter } from 'vue-router'
 import DepartmentSelector from '../components/DepartmentSelector.vue'
 import { useGlobalNotifications } from '../composables/useNotifications.js'
 import { useRssFeed } from '../composables/useRssFeed.js'
-import { 
-  getDefaultDepartments, 
-  getAllDepartments,
-  getDepartment 
-} from '../config/departments.js'
+import { useDepartments } from '../composables/useDepartments.js'
 import { formatDateForMobile, isToday } from '../utils/dateUtils.js'
 
 // Router
@@ -161,16 +157,18 @@ const {
   fetchFeeds
 } = useRssFeed()
 
+const { getDefaultDepartments, getDepartment } = useDepartments()
+
 // State
-const selectedDepartments = ref(getDefaultDepartments().map(d => d.id))
+const selectedDepartments = ref(['main', 'academic', 'scholarship'])
 const showStats = ref(true)
 
 // Presets
 const presets = {
-  default: ['main', 'academic', 'employment'],
-  academic: ['main', 'academic', 'scholarship', 'library'],
-  employment: ['main', 'employment', 'scholarship'],
-  all: getAllDepartments().map(d => d.id)
+  default: ['main', 'academic', 'scholarship'],
+  academic: ['main', 'academic', 'scholarship', 'tuition'],
+  events: ['main', 'events', 'cheongram'],
+  all: ['main', 'academic', 'cheongram', 'tuition', 'scholarship', 'events']
 }
 
 // Computed
@@ -273,9 +271,12 @@ function formatLastUpdate(date) {
 
 // Lifecycle
 onMounted(() => {
-  // Load initial data for stats
+  // Load initial data for stats - only if not already loaded
   if (selectedDepartments.value.length > 0) {
-    fetchFeeds(selectedDepartments.value)
+    const needsLoading = selectedDepartments.value.some(deptId => !allItems.value.some(item => item.departmentId === deptId))
+    if (needsLoading) {
+      fetchFeeds(selectedDepartments.value)
+    }
   }
 })
 

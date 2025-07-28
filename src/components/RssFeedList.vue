@@ -272,10 +272,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useRssFeed } from "../composables/useRssFeed.js";
 import { useGlobalNotifications } from "../composables/useNotifications.js";
-import {
-  getDefaultDepartments,
-  getAllDepartments,
-} from "../config/departments.js";
+import { useDepartments } from "../composables/useDepartments.js";
 import {
   groupByDateCategory,
   isToday,
@@ -342,7 +339,9 @@ const props = defineProps({
 });
 
 // Composables
+const { getDefaultDepartments } = useDepartments();
 const {
+  feeds,
   allItems,
   loading,
   errors,
@@ -350,6 +349,7 @@ const {
   fetchFeeds,
   refreshFeeds,
   hasErrors,
+  setActiveDepartments,
 } = useRssFeed({
   autoRefresh: props.autoRefresh,
   refreshInterval: 5 * 60 * 1000, // 5 minutes
@@ -357,8 +357,8 @@ const {
 
 const { showSuccess, showError, showFeedUpdate } = useGlobalNotifications();
 
-// State
-const selectedDepartments = ref(getDefaultDepartments().map((d) => d.id));
+// State - Initialize with hardcoded defaults to avoid infinite loop
+const selectedDepartments = ref(['main', 'academic', 'scholarship']);
 const searchQuery = ref("");
 const dateFilter = ref("all");
 const sortOption = ref("date-desc");
@@ -534,7 +534,19 @@ async function handlePullRefresh() {
 
 async function handleDepartmentChange({ selected }) {
   selectedDepartments.value = selected;
-  await fetchFeeds(selected);
+  
+  // Update active departments immediately to reflect UI changes
+  setActiveDepartments(selected);
+  
+  // Only fetch feeds that aren't already loaded or are outdated
+  const needsFetching = selected.filter(deptId => {
+    const feed = feeds.value.get(deptId);
+    return !feed || (feed.fetchedAt && Date.now() - feed.fetchedAt.getTime() > 5 * 60 * 1000); // 5 minutes
+  });
+  
+  if (needsFetching.length > 0) {
+    await fetchFeeds(needsFetching);
+  }
 }
 
 async function handleDepartmentApply({ selected }) {
@@ -642,16 +654,24 @@ function handleScroll() {
   showScrollToTop.value = window.scrollY > 300;
 }
 
+// Store cleanup functions
+let infiniteScrollCleanup = null;
+
 // Lifecycle
 onMounted(async () => {
-  // Initial load
-  await fetchFeeds(selectedDepartments.value);
+  // Set initial active departments
+  setActiveDepartments(selectedDepartments.value);
+  
+  // Initial load - only fetch if we don't already have feeds for these departments
+  const needsLoading = selectedDepartments.value.some(deptId => !feeds.value.get(deptId))
+  if (needsLoading) {
+    await fetchFeeds(selectedDepartments.value);
+  }
 
   // Setup infinite scroll
   if (props.infiniteScroll) {
     nextTick(() => {
-      const cleanup = setupInfiniteScroll();
-      onUnmounted(cleanup);
+      infiniteScrollCleanup = setupInfiniteScroll();
     });
   }
 
@@ -660,6 +680,12 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  // Clean up infinite scroll
+  if (infiniteScrollCleanup) {
+    infiniteScrollCleanup();
+  }
+  
+  // Clean up scroll listener
   window.removeEventListener("scroll", handleScroll);
 });
 
