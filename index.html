@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="description" content="한국교원대학교 통합 게시판 RSS 피드 서비스" />
+    <meta name="keywords" content="한국교원대학교,KNUE,게시판,공지사항,RSS" />
+    <meta name="author" content="KNUE Board Hub Team" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://knue.ac.kr/board-hub" />
+    <meta property="og:title" content="KNUE 게시판 Hub" />
+    <meta property="og:description" content="한국교원대학교 통합 게시판 RSS 피드 서비스" />
+    <meta property="og:image" content="/og-image.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://knue.ac.kr/board-hub" />
+    <meta property="twitter:title" content="KNUE 게시판 Hub" />
+    <meta property="twitter:description" content="한국교원대학교 통합 게시판 RSS 피드 서비스" />
+    <meta property="twitter:image" content="/og-image.png" />
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0066cc" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="KNUE 게시판" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://www.knue.ac.kr" crossorigin />
+    
+    <!-- DNS prefetch -->
+    <link rel="dns-prefetch" href="//www.knue.ac.kr" />
+    
+    <title>KNUE 게시판 Hub - 한국교원대학교</title>
+    
+    <!-- Critical CSS -->
+    <style>
+      /* Critical loading styles */
+      #app {
+        min-height: 100vh;
+        background: #f8f9fa;
+      }
+      
+      .app-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #f8f9fa;
+      }
+      
+      .loading-spinner {
+        width: 2rem;
+        height: 2rem;
+        border: 2px solid #e5e7eb;
+        border-top: 2px solid #0066cc;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      /* Prevent FOUC */
+      [v-cloak] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Fallback loading for no-JS users -->
+      <div class="app-loading">
+        <div class="loading-spinner"></div>
+      </div>
+    </div>
+    
+    <!-- App Script -->
+    <script type="module" src="/src/main.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator && 'production' === 'production') {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
