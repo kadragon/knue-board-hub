@@ -47,7 +47,7 @@
         </header>
 
         <!-- Post Body -->
-        <div class="post-body prose prose-sm max-w-none" v-html="post.description" />
+        <div class="post-body prose prose-sm max-w-none" v-html="sanitizedDescription" />
 
         <!-- Actions -->
         <footer class="mt-8 pt-6 border-t border-gray-200">
@@ -90,6 +90,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useNotifications } from '../composables/useNotifications.js'
+import DOMPurify from 'dompurify'
 
 const route = useRoute()
 const { showSuccess, showError } = useNotifications()
@@ -99,6 +100,16 @@ const post = ref(null)
 const loading = ref(false)
 const error = ref(null)
 const isBookmarked = ref(false)
+
+// Sanitized description for secure HTML rendering
+const sanitizedDescription = computed(() => {
+  if (!post.value?.description) return ''
+  return DOMPurify.sanitize(post.value.description, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+    ALLOWED_ATTR: ['href', 'target', 'rel'],
+    ALLOW_DATA_ATTR: false
+  })
+})
 
 function formatDate(dateString) {
   const date = new Date(dateString)
@@ -112,6 +123,12 @@ function formatDate(dateString) {
 }
 
 async function loadPost() {
+  if (!postId.value) {
+    error.value = '유효하지 않은 게시글 ID입니다'
+    showError('유효하지 않은 게시글입니다')
+    return
+  }
+  
   loading.value = true
   error.value = null
   
@@ -120,7 +137,7 @@ async function loadPost() {
     // In a real app, this would fetch from an API
     await new Promise(resolve => setTimeout(resolve, 1000))
     
-    post.value = {
+    const loadedPost = {
       id: postId.value,
       title: '샘플 게시글 제목',
       description: '<p>게시글 내용입니다. 실제 구현에서는 API에서 데이터를 가져와야 합니다.</p>',
@@ -131,12 +148,19 @@ async function loadPost() {
       }
     }
     
+    // Validate required fields
+    if (!loadedPost.title || !loadedPost.description) {
+      throw new Error('게시글 데이터가 완전하지 않습니다')
+    }
+    
+    post.value = loadedPost
+    
     // Check if bookmarked
     const bookmarks = JSON.parse(localStorage.getItem('knue-bookmarks') || '[]')
     isBookmarked.value = bookmarks.includes(postId.value)
     
   } catch (err) {
-    error.value = err.message
+    error.value = err.message || '알 수 없는 오류가 발생했습니다'
     showError('게시글을 불러오는데 실패했습니다')
   } finally {
     loading.value = false
@@ -164,7 +188,7 @@ async function sharePost() {
     try {
       await navigator.share({
         title: post.value.title,
-        text: post.value.description.replace(/<[^>]*>/g, '').substring(0, 200),
+        text: DOMPurify.sanitize(post.value.description, { ALLOWED_TAGS: [] }).substring(0, 200),
         url: window.location.href
       })
     } catch (err) {

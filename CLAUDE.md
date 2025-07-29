@@ -130,3 +130,132 @@ Icons use Tabler and Material Symbols through UnoCSS presets. Use format `i-tabl
 
 **Build Optimization:**
 The build separates vendor code (Vue) from RSS-specific utilities for optimal caching. Manual chunks are configured for the RSS parsing and feed management modules.
+
+## API Reference
+
+### Composables
+
+**`useRssFeed(options)`**
+
+- **Purpose**: Manages RSS feed state, fetching, and caching
+- **Returns**: `{ feeds, loading, errors, allItems, fetchFeeds, refreshFeeds, ... }`
+- **Key Methods**:
+  - `fetchFeeds(departmentIds, options)` - Fetch feeds for specified departments
+  - `refreshFeeds(options)` - Refresh all active feeds
+  - `setActiveDepartments(departmentIds)` - Set which departments are active
+
+**`useDepartments()`**
+
+- **Purpose**: Manages department configuration data
+- **Returns**: `{ departments, loading, error, fetchDepartments, getDepartment }`
+- **Key Methods**:
+  - `fetchDepartments()` - Load all departments from API
+  - `getDepartment(id, autoFetch)` - Get specific department with optional auto-fetch
+
+**`useNotifications()`**
+
+- **Purpose**: Global notification system
+- **Returns**: `{ notifications, show, hide, clear }`
+- **Types**: `success`, `error`, `warning`, `info`
+
+### Components Props
+
+**`RssItem.vue`**
+
+```javascript
+defineProps({
+  item: { type: Object, required: true }, // RSS item data
+  compact: { type: Boolean, default: false }, // Compact display mode
+  showDepartment: { type: Boolean, default: true },
+});
+```
+
+**`RssFeedList.vue`**
+
+```javascript
+defineProps({
+  departments: { type: Array, default: () => [] },
+  compact: { type: Boolean, default: false },
+  autoRefresh: { type: Boolean, default: false },
+  showFilters: { type: Boolean, default: true },
+});
+```
+
+**`DepartmentSelector.vue`**
+
+```javascript
+defineProps({
+  modelValue: { type: Array, default: () => [] },
+  compact: { type: Boolean, default: false },
+  showStats: { type: Boolean, default: true },
+});
+```
+
+### Cloudflare Worker API
+
+**Base URL**: `/api` (proxied to Worker in development)
+
+**Endpoints:**
+
+- `GET /api/departments` - Get all departments
+- `GET /api/rss/items` - Get RSS items with filtering
+- `POST /api/rss/refresh` - Refresh RSS feeds
+- `GET /api/stats` - Get cache statistics
+
+**Query Parameters for `/api/rss/items`:**
+
+- `departments` - Comma-separated department IDs
+- `limit` - Items per page (default: 20)
+- `offset` - Pagination offset
+- `search` - Search query
+- `dateFilter` - `all`, `today`, `week`, `month`
+- `sortBy` - `date-desc`, `date-asc`, `department`
+
+## Troubleshooting
+
+### Common Issues
+
+**RSS feeds not loading:**
+
+1. Check if Cloudflare Worker is running: `npx wrangler dev`
+2. Verify D1 database connection in Wrangler dashboard
+3. Check console for CORS or network errors
+4. Ensure department configurations have valid `rss_url` values
+
+**Development server issues:**
+
+1. Run `npm run dev:full` to start both frontend and Worker
+2. Check port conflicts (frontend: 5173, worker: 8787)
+3. Verify Vite proxy configuration in `vite.config.js`
+
+**Build failures:**
+
+1. Run `npm run type-check` to identify TypeScript errors
+2. Run `npm run lint` to fix ESLint issues
+3. Check UnoCSS configuration for invalid classes
+
+**Worker deployment issues:**
+
+1. Verify `wrangler.toml` configuration
+2. Check D1 database bindings and IDs
+3. Ensure secrets are properly configured in Cloudflare dashboard
+
+### Performance Optimization
+
+**RSS Feed Performance:**
+
+- Server-side caching reduces API calls to KNUE servers
+- Client-side debouncing prevents rapid successive requests
+- Concurrent fetching improves load times for multiple departments
+
+**UI Performance:**
+
+- Virtual scrolling for large feed lists (implement as needed)
+- Image lazy loading for department icons
+- Route-based code splitting reduces initial bundle size
+
+**Database Performance:**
+
+- Indexed queries on `department_id`, `pub_date`, and `hash`
+- Automatic cleanup keeps cache size manageable (100 items per department)
+- SHA-256 hashing for efficient deduplication
