@@ -10,7 +10,6 @@ const Home = () => import("../views/HomeView.vue");
 const Departments = () => import("../views/DepartmentsView.vue");
 const Settings = () => import("../views/SettingsView.vue");
 const About = () => import("../views/AboutView.vue");
-const RssTest = () => import("../views/RssTestView.vue");
 const NotFound = () => import("../views/NotFoundView.vue");
 
 // Route definitions
@@ -61,18 +60,6 @@ const routes = [
       icon: "i-tabler-info-circle",
       showInNav: true,
       requiresOnline: false,
-    },
-  },
-  {
-    path: "/rss-test",
-    name: "rss-test",
-    component: RssTest,
-    meta: {
-      title: "RSS 구조 분석",
-      description: "RSS 피드 구조 분석 도구",
-      icon: "i-tabler-code",
-      showInNav: import.meta.env.DEV,
-      requiresOnline: true,
     },
   },
 

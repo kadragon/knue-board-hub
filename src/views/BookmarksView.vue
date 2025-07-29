@@ -87,10 +87,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useNotifications } from '../composables/useNotifications.js'
-import { getDepartment } from '../config/departments.js'
+import { useDepartments } from '../composables/useDepartments.js'
 import EmptyState from '../components/EmptyState.vue'
 
 const { showSuccess, showWarning } = useNotifications()
+const { getDepartment } = useDepartments()
 
 const bookmarks = ref([])
 const loading = ref(true)
@@ -138,7 +139,7 @@ async function loadBookmarks() {
       title: `북마크된 게시글 ${index + 1}`,
       description: '이것은 북마크된 게시글의 내용입니다. 실제 앱에서는 API를 통해 데이터를 가져와야 합니다.',
       pubDate: new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString(),
-      department: getDepartment(['main', 'academic', 'employment'][index % 3])
+      department: getDepartment(['main', 'academic', 'scholarship'][index % 3])
     }))
     
   } catch (error) {

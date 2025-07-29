@@ -3,9 +3,10 @@
  * Vue 3 Composition API for handling RSS feed data and state
  */
 
-import { ref, reactive, computed, watch, onMounted, onUnmounted, readonly } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, readonly, nextTick } from 'vue'
 import { parseRSSFeed, validateRSSFeed, sortItemsByDate, filterItemsByDate } from '../utils/rssParser.js'
-import { getDepartment, generateRSSUrl, generateProxyUrl, RSS_CONFIG } from '../config/departments.js'
+import { RSS_CONFIG } from '../config/departments.js'
+import { useDepartments } from './useDepartments.js'
 
 /**
  * Main RSS feed composable
@@ -13,12 +14,19 @@ import { getDepartment, generateRSSUrl, generateProxyUrl, RSS_CONFIG } from '../
  * @returns {Object} Reactive RSS feed state and methods
  */
 export function useRssFeed(options = {}) {
+  // Use departments composable for efficient department data management
+  const { getDepartment: getDepartmentFromComposable, fetchDepartments } = useDepartments()
+  
   // Reactive state
   const feeds = ref(new Map()) // Map<departmentId, feedData>
   const loading = ref(false)
   const errors = ref(new Map()) // Map<departmentId, error>
   const lastUpdate = ref(null)
   const cache = ref(new Map()) // Map<url, {data, timestamp}>
+  const pendingFetches = ref(new Set()) // Track ongoing fetches to prevent duplicates
+  let fetchDebounceTimer = null // Debounce timer to prevent rapid successive calls
+  const initializedDepartments = ref(new Set()) // Track which departments have been initialized
+  const activeDepartments = ref(new Set()) // Track currently active/selected departments
   
   // Configuration
   const config = reactive({
@@ -34,18 +42,70 @@ export function useRssFeed(options = {}) {
   let refreshTimer = null
 
   /**
+   * Get department data efficiently using useDepartments composable
+   * @param {string} departmentId - Department identifier
+   * @returns {Promise<Object>} Department data
+   */
+  async function getDepartment(departmentId) {
+    const department = await getDepartmentFromComposable(departmentId, true)
+    
+    if (!department) {
+      throw new Error(`Unknown department: ${departmentId}`)
+    }
+
+    return department
+  }
+
+  /**
+   * Generate RSS URL for department
+   * @param {string} departmentId - Department identifier
+   * @param {Object} options - Additional URL parameters
+   * @returns {Promise<string>} Complete RSS URL
+   */
+  async function generateRSSUrl(departmentId, options = {}) {
+    const department = await getDepartment(departmentId)
+    
+    if (department.rssUrl) {
+      // Use the rss_url from database if available
+      const url = new URL(department.rssUrl)
+      Object.entries(options).forEach(([key, value]) => {
+        url.searchParams.set(key, value)
+      })
+      return url.toString()
+    } else {
+      // Fallback to generating URL from bbsNo
+      const baseUrl = 'https://www.knue.ac.kr/rssBbsNtt.do'
+      const params = new URLSearchParams({
+        bbsNo: department.bbsNo,
+        ...options
+      })
+      return `${baseUrl}?${params.toString()}`
+    }
+  }
+
+  /**
+   * Generate proxy URL for CORS bypass
+   * @param {string} rssUrl - Original RSS URL
+   * @param {string} environment - Current environment
+   * @returns {string} Proxy URL
+   */
+  function generateProxyUrl(rssUrl, environment = 'development') {
+    if (environment === 'development') {
+      return `/api/rss?url=${encodeURIComponent(rssUrl)}`
+    } else {
+      return `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`
+    }
+  }
+
+  /**
    * Fetch RSS feed for a specific department
    * @param {string} departmentId - Department identifier
    * @param {Object} fetchOptions - Fetch options
    * @returns {Promise<Object>} Parsed feed data
    */
   async function fetchDepartmentFeed(departmentId, fetchOptions = {}) {
-    const department = getDepartment(departmentId)
-    if (!department) {
-      throw new Error(`Unknown department: ${departmentId}`)
-    }
-
-    const rssUrl = generateRSSUrl(departmentId, fetchOptions)
+    // Generate RSS URL using the dedicated function
+    const rssUrl = await generateRSSUrl(departmentId)
     const proxyUrl = generateProxyUrl(rssUrl, config.environment)
     
     // Check cache first
@@ -85,11 +145,21 @@ export function useRssFeed(options = {}) {
           throw new Error('Invalid RSS feed structure')
         }
         
-        // Add department metadata
+        // Add department metadata (already in correct format from useDepartments)
+        const departmentForFeed = {
+          id: department.id,
+          name: department.name,
+          description: department.description || '',
+          icon: department.icon || '📋',
+          color: department.color || '#6B7280',
+          bbsNo: department.bbsNo,
+          priority: department.priority || 999
+        }
+        
         const feedData = {
           ...parsedData,
           departmentId,
-          department,
+          department: departmentForFeed,
           fetchedAt: new Date(),
           url: rssUrl
         }
@@ -114,6 +184,44 @@ export function useRssFeed(options = {}) {
   }
 
   /**
+   * Ensure departments are loaded efficiently
+   * @param {Array} departmentIds - Array of department identifiers
+   * @returns {Promise<void>}
+   */
+  async function ensureDepartmentsLoaded(departmentIds) {
+    console.log(`Ensuring ${departmentIds.length} departments are loaded: ${departmentIds.join(', ')}`)
+    
+    // The useDepartments composable handles efficient fetching
+    // It will fetch all departments once if needed, instead of individual calls
+    await fetchDepartments()
+  }
+
+  /**
+   * Set active departments (departments that should be included in allItems)
+   * @param {Array} departmentIds - Array of department identifiers
+   */
+  function setActiveDepartments(departmentIds) {
+    activeDepartments.value.clear()
+    departmentIds.forEach(id => activeDepartments.value.add(id))
+  }
+
+  /**
+   * Add department to active list
+   * @param {string} departmentId - Department identifier
+   */
+  function addActiveDepartment(departmentId) {
+    activeDepartments.value.add(departmentId)
+  }
+
+  /**
+   * Remove department from active list
+   * @param {string} departmentId - Department identifier
+   */
+  function removeActiveDepartment(departmentId) {
+    activeDepartments.value.delete(departmentId)
+  }
+
+  /**
    * Fetch multiple department feeds
    * @param {Array} departmentIds - Array of department identifiers
    * @param {Object} options - Fetch options
@@ -124,18 +232,59 @@ export function useRssFeed(options = {}) {
       departmentIds = [departmentIds]
     }
 
+    // Update active departments to match the requested feeds
+    setActiveDepartments(departmentIds)
+
+    // Debounce rapid successive calls (unless skipCache is true for refresh)
+    if (!options.skipCache) {
+      if (fetchDebounceTimer) {
+        clearTimeout(fetchDebounceTimer)
+      }
+      
+      return new Promise((resolve) => {
+        fetchDebounceTimer = setTimeout(async () => {
+          fetchDebounceTimer = null
+          const result = await performFetch(departmentIds, options)
+          resolve(result)
+        }, 100) // 100ms debounce
+      })
+    }
+    
+    return performFetch(departmentIds, options)
+  }
+
+  async function performFetch(departmentIds, options = {}) {
+    // Filter out departments that are already being fetched or initialized (prevent duplicates)
+    const filteredDepartmentIds = departmentIds.filter(id => {
+      const isBeingFetched = pendingFetches.value.has(id)
+      const isAlreadyInitialized = initializedDepartments.value.has(id) && feeds.value.has(id)
+      return !isBeingFetched && !(isAlreadyInitialized && !options.skipCache)
+    })
+    
+    if (filteredDepartmentIds.length === 0) {
+      console.log('All requested departments are already being fetched or initialized, skipping duplicate requests')
+      return
+    }
+
+    // Mark departments as being fetched
+    filteredDepartmentIds.forEach(id => pendingFetches.value.add(id))
+
     loading.value = true
     const startTime = Date.now()
 
     try {
+      // Ensure departments are loaded efficiently
+      await ensureDepartmentsLoaded(filteredDepartmentIds)
+
       // Clear previous errors for these departments
-      departmentIds.forEach(id => errors.value.delete(id))
+      filteredDepartmentIds.forEach(id => errors.value.delete(id))
 
       // Fetch feeds concurrently
-      const fetchPromises = departmentIds.map(async (departmentId) => {
+      const fetchPromises = filteredDepartmentIds.map(async (departmentId) => {
         try {
           const feedData = await fetchDepartmentFeed(departmentId, options)
           feeds.value.set(departmentId, feedData)
+          initializedDepartments.value.add(departmentId) // Mark as successfully initialized
           return { departmentId, success: true, data: feedData }
         } catch (error) {
           errors.value.set(departmentId, {
@@ -144,6 +293,9 @@ export function useRssFeed(options = {}) {
             departmentId
           })
           return { departmentId, success: false, error }
+        } finally {
+          // Remove from pending fetches when done
+          pendingFetches.value.delete(departmentId)
         }
       })
 
@@ -158,6 +310,8 @@ export function useRssFeed(options = {}) {
       lastUpdate.value = new Date()
       
     } finally {
+      // Clean up any remaining pending fetches
+      filteredDepartmentIds.forEach(id => pendingFetches.value.delete(id))
       loading.value = false
     }
   }
@@ -167,7 +321,7 @@ export function useRssFeed(options = {}) {
    * @param {Object} options - Refresh options
    */
   async function refreshFeeds(options = {}) {
-    const currentDepartments = Array.from(feeds.value.keys())
+    const currentDepartments = Array.from(activeDepartments.value)
     if (currentDepartments.length > 0) {
       await fetchFeeds(currentDepartments, { ...options, skipCache: true })
     }
@@ -181,7 +335,10 @@ export function useRssFeed(options = {}) {
   function getCachedData(url) {
     const cached = cache.value.get(url)
     if (cached && Date.now() - cached.timestamp < config.cacheDuration) {
-      console.log(`Using cached data for ${url}`)
+      // Reduce console spam by only logging occasionally
+      if (Math.random() < 0.1) {
+        console.log(`Using cached data for ${url}`)
+      }
       return cached.data
     }
     return null
@@ -211,6 +368,7 @@ export function useRssFeed(options = {}) {
     }
   }
 
+
   /**
    * Setup auto-refresh if enabled
    */
@@ -238,7 +396,8 @@ export function useRssFeed(options = {}) {
   const allItems = computed(() => {
     const items = []
     for (const feed of feeds.value.values()) {
-      if (feed.items) {
+      // Only include items from currently active departments
+      if (feed.items && activeDepartments.value.has(feed.departmentId)) {
         items.push(...feed.items.map(item => ({
           ...item,
           departmentId: feed.departmentId,
@@ -287,6 +446,11 @@ export function useRssFeed(options = {}) {
 
   onUnmounted(() => {
     stopAutoRefresh()
+    // Clean up debounce timer
+    if (fetchDebounceTimer) {
+      clearTimeout(fetchDebounceTimer)
+      fetchDebounceTimer = null
+    }
   })
 
   return {
@@ -311,7 +475,12 @@ export function useRssFeed(options = {}) {
     refreshFeeds,
     clearCache,
     setupAutoRefresh,
-    stopAutoRefresh
+    stopAutoRefresh,
+    setActiveDepartments,
+    addActiveDepartment,
+    removeActiveDepartment,
+    generateRSSUrl,
+    generateProxyUrl
   }
 }
 

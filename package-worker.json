@@ -1,0 +1,36 @@
+{
+  "name": "knue-board-hub-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Workers API for KNUE Board Hub",
+  "type": "module",
+  "main": "src/worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "wrangler build",
+    "tail": "wrangler tail",
+    "db:create": "wrangler d1 create knue-board-hub",
+    "db:migrate": "wrangler d1 execute knue-board-hub --file=./cloudflare/schema.sql && wrangler d1 execute knue-board-hub --file=./cloudflare/seed.sql",
+    "db:migrate:remote": "wrangler d1 execute knue-board-hub --file=./cloudflare/schema.sql --remote && wrangler d1 execute knue-board-hub --file=./cloudflare/seed.sql --remote",
+    "db:query": "wrangler d1 execute knue-board-hub --command",
+    "lint": "eslint src --ext .js --fix"
+  },
+  "dependencies": {
+    "hono": "^3.12.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.22.0",
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "eslint": "^8.56.0"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "d1",
+    "api",
+    "rss",
+    "knue"
+  ],
+  "author": "KNUE Board Hub Team",
+  "license": "MIT"
+}

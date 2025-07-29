@@ -7,6 +7,21 @@ export default defineConfig({
   plugins: [vue(), UnoCSS()],
   server: {
     proxy: {
+      // Proxy API calls to Cloudflare Worker (run with: npx wrangler dev)
+      // Must be before /api/rss to match more specific routes first
+      '^/api/(?!rss).*': {
+        target: 'http://localhost:8787',
+        changeOrigin: true,
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('❌ Proxy error - make sure Cloudflare Worker is running with: npx wrangler dev')
+            console.log('   Run in another terminal: npx wrangler dev')
+          })
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('🔄 Proxying to Worker:', proxyReq.method, proxyReq.path)
+          })
+        }
+      },
       // CORS proxy for RSS feeds during development
       '/api/rss': {
         target: 'https://www.knue.ac.kr',

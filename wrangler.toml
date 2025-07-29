@@ -1,0 +1,42 @@
+# Cloudflare Workers Configuration for KNUE Board Hub
+name = "knue-board-hub-api"
+main = "src/worker.js"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "knue-board-hub"
+database_id = "${DATABASE_ID}"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+CORS_ORIGIN = "http://localhost:5173"
+RSS_CACHE_TTL = "1800" # 30 minutes
+MAX_RSS_ITEMS = "50"
+
+# Production environment
+[env.production]
+vars = { ENVIRONMENT = "production", CORS_ORIGIN = "https://your-domain.pages.dev" }
+
+# Routes for API endpoints
+routes = [
+  { pattern = "*/api/*", zone_name = "your-domain.com" }
+]
+
+# Build configuration
+[build]
+command = "npm run build"
+cwd = "."
+
+# Durable Objects (for future real-time features)
+# [[durable_objects.bindings]]
+# name = "RSS_SYNC"
+# class_name = "RssSyncDO"
+
+# KV Namespace (for caching if needed)
+# [[kv_namespaces]]
+# binding = "RSS_CACHE"
+# id = "your-kv-namespace-id"
