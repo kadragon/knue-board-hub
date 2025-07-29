@@ -158,21 +158,47 @@ wrangler d1 export knue-board-hub --output backup.sql
 
 ### 2. Environment Variables
 
-Add to `wrangler.toml`:
+Add to `wrangler.toml` (only non-sensitive values):
 
 ```toml
 [vars]
 GOOGLE_CLIENT_ID = "your-google-client-id"
-GOOGLE_CLIENT_SECRET = "your-google-client-secret"
-JWT_SECRET = "your-jwt-secret-key"
+```
+
+**⚠️ Security Note:** Use `wrangler secret put` for sensitive values (see Setting Secrets section below):
+
+```bash
+wrangler secret put GOOGLE_CLIENT_SECRET
+wrangler secret put JWT_SECRET
 ```
 
 ### 3. Frontend Integration
 
-Install Google OAuth library:
+For Vue 3 frontend, use Google Identity Services:
 
 ```bash
-npm install @google-cloud/oauth2
+# Install Google Identity Services for web
+npm install google-auth-library
+# or use the script tag approach (recommended for web)
+```
+
+Add to your `index.html`:
+
+```html
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+```
+
+Example Vue composable:
+
+```js
+// composables/useGoogleAuth.js
+const useGoogleAuth = () => {
+  const signIn = () => {
+    window.google.accounts.id.prompt()
+  }
+  
+  return { signIn }
+}
 ```
 
 ## 📈 Monitoring & Analytics

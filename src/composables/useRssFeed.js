@@ -57,20 +57,56 @@ export function useRssFeed(options = {}) {
   }
 
   /**
+   * Generate RSS URL for department
+   * @param {string} departmentId - Department identifier
+   * @param {Object} options - Additional URL parameters
+   * @returns {Promise<string>} Complete RSS URL
+   */
+  async function generateRSSUrl(departmentId, options = {}) {
+    const department = await getDepartment(departmentId)
+    
+    if (department.rssUrl) {
+      // Use the rss_url from database if available
+      const url = new URL(department.rssUrl)
+      Object.entries(options).forEach(([key, value]) => {
+        url.searchParams.set(key, value)
+      })
+      return url.toString()
+    } else {
+      // Fallback to generating URL from bbsNo
+      const baseUrl = 'https://www.knue.ac.kr/rssBbsNtt.do'
+      const params = new URLSearchParams({
+        bbsNo: department.bbsNo,
+        ...options
+      })
+      return `${baseUrl}?${params.toString()}`
+    }
+  }
+
+  /**
+   * Generate proxy URL for CORS bypass
+   * @param {string} rssUrl - Original RSS URL
+   * @param {string} environment - Current environment
+   * @returns {string} Proxy URL
+   */
+  function generateProxyUrl(rssUrl, environment = 'development') {
+    if (environment === 'development') {
+      return `/api/rss?url=${encodeURIComponent(rssUrl)}`
+    } else {
+      return `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`
+    }
+  }
+
+  /**
    * Fetch RSS feed for a specific department
    * @param {string} departmentId - Department identifier
    * @param {Object} fetchOptions - Fetch options
    * @returns {Promise<Object>} Parsed feed data
    */
   async function fetchDepartmentFeed(departmentId, fetchOptions = {}) {
-    // Get department info (cached or from API)
-    const department = await getDepartment(departmentId)
-
-    // Generate RSS URL from department data
-    const rssUrl = department.rssUrl || `${RSS_CONFIG.baseUrl}?bbsNo=${department.bbsNo}`
-    const proxyUrl = config.environment === 'development' 
-      ? `/api/rss?url=${encodeURIComponent(rssUrl)}`
-      : `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`
+    // Generate RSS URL using the dedicated function
+    const rssUrl = await generateRSSUrl(departmentId)
+    const proxyUrl = generateProxyUrl(rssUrl, config.environment)
     
     // Check cache first
     if (!fetchOptions.skipCache) {
@@ -442,7 +478,9 @@ export function useRssFeed(options = {}) {
     stopAutoRefresh,
     setActiveDepartments,
     addActiveDepartment,
-    removeActiveDepartment
+    removeActiveDepartment,
+    generateRSSUrl,
+    generateProxyUrl
   }
 }
 

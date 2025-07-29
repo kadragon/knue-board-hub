@@ -25,7 +25,7 @@ CREATE TABLE rss_cache (
   description TEXT,
   pub_date DATETIME NOT NULL,
   content TEXT,
-  hash TEXT UNIQUE NOT NULL, -- MD5 hash for deduplication
+  hash TEXT UNIQUE NOT NULL, -- SHA-256 hash for deduplication
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (department_id) REFERENCES departments(id)
 );

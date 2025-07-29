@@ -148,3 +148,6 @@ vite.config.ts.timestamp-*
 
 # wrangler
 .wrangler/
+
+# Cloudflare Workers development environment variables
+.dev.vars

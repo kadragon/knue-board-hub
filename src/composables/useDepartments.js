@@ -11,6 +11,7 @@ const departments = ref([])
 const loading = ref(false)
 const error = ref(null)
 const lastFetch = ref(null)
+const isInitialized = ref(false)
 
 // Cache duration: 5 minutes
 const CACHE_DURATION = 5 * 60 * 1000
@@ -56,6 +57,7 @@ export function useDepartments() {
         departments.value.sort((a, b) => a.priority - b.priority)
         
         lastFetch.value = Date.now()
+        isInitialized.value = true
         console.log(`Loaded ${departments.value.length} departments from D1 database`)
         
         return departments.value
@@ -108,54 +110,19 @@ export function useDepartments() {
 
   /**
    * Get default departments for initial load (first 3 by priority)
-   * @returns {Array} High priority departments
+   * @returns {Array} High priority departments with IDs
    */
   function getDefaultDepartments() {
+    const defaults = departments.value.slice(0, 3)
+    return defaults.map(dept => dept.id)
+  }
+
+  /**
+   * Get default departments as objects (for backward compatibility)
+   * @returns {Array} High priority department objects
+   */
+  function getDefaultDepartmentObjects() {
     return departments.value.slice(0, 3)
-  }
-
-  /**
-   * Generate RSS URL for department
-   * @param {string} departmentId - Department identifier
-   * @param {Object} options - Additional URL parameters
-   * @returns {string} Complete RSS URL
-   */
-  function generateRSSUrl(departmentId, options = {}) {
-    const department = getDepartment(departmentId)
-    if (!department) {
-      throw new Error(`Unknown department: ${departmentId}`)
-    }
-
-    if (department.rssUrl) {
-      // Use the rss_url from database if available
-      const url = new URL(department.rssUrl)
-      Object.entries(options).forEach(([key, value]) => {
-        url.searchParams.set(key, value)
-      })
-      return url.toString()
-    } else {
-      // Fallback to generating URL from bbsNo
-      const baseUrl = 'https://www.knue.ac.kr/rssBbsNtt.do'
-      const params = new URLSearchParams({
-        bbsNo: department.bbsNo,
-        ...options
-      })
-      return `${baseUrl}?${params.toString()}`
-    }
-  }
-
-  /**
-   * Generate proxy URL for CORS bypass
-   * @param {string} rssUrl - Original RSS URL
-   * @param {string} environment - Current environment
-   * @returns {string} Proxy URL
-   */
-  function generateProxyUrl(rssUrl, environment = 'development') {
-    if (environment === 'development') {
-      return `/api/rss?url=${encodeURIComponent(rssUrl)}`
-    } else {
-      return `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`
-    }
   }
 
   // Computed properties
@@ -170,6 +137,8 @@ export function useDepartments() {
   const isLoading = computed(() => loading.value)
   
   const hasError = computed(() => !!error.value)
+  
+  const initialized = computed(() => isInitialized.value)
 
   // Auto-fetch on mount if not already loaded
   onMounted(() => {
@@ -189,14 +158,14 @@ export function useDepartments() {
     // Computed
     departmentCount,
     hasError,
+    initialized,
 
     // Methods
     fetchDepartments,
     getDepartment,
     getDepartmentsByIds,
     getDefaultDepartments,
-    generateRSSUrl,
-    generateProxyUrl
+    getDefaultDepartmentObjects
   }
 }
 
