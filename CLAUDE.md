@@ -191,16 +191,21 @@ defineProps({
 });
 ```
 
-### Cloudflare Worker API
+### API Routing Strategy
 
-**Base URL**: `/api` (proxied to Worker in development)
+**Development Proxy Configuration:**
 
-**Endpoints:**
+- **Worker endpoints** (`^/api/(?!rss).*`) → `http://localhost:8787`
+  - `GET /api/departments` - Get all departments
+  - `GET /api/departments/:id` - Get specific department
+  - `GET /api/rss/items` - Get RSS items with filtering
+  - `POST /api/rss/refresh` - Refresh RSS feeds
+  - `GET /api/health` - Worker health check
+  - Future auth endpoints: `/api/auth/*`, `/api/user/*`
 
-- `GET /api/departments` - Get all departments
-- `GET /api/rss/items` - Get RSS items with filtering
-- `POST /api/rss/refresh` - Refresh RSS feeds
-- `GET /api/stats` - Get cache statistics
+- **Direct RSS feeds** (`/api/rss`) → `https://www.knue.ac.kr`
+  - Used for direct RSS XML fetching with CORS proxy
+  - Accepts `?url=` parameter for dynamic RSS URLs
 
 **Query Parameters for `/api/rss/items`:**
 
