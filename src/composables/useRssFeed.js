@@ -98,89 +98,100 @@ export function useRssFeed(options = {}) {
   }
 
   /**
-   * Fetch RSS feed for a specific department
-   * @param {string} departmentId - Department identifier
+   * Fetch RSS items using the new API endpoint
+   * @param {Array} departmentIds - Array of department identifiers
    * @param {Object} fetchOptions - Fetch options
-   * @returns {Promise<Object>} Parsed feed data
+   * @returns {Promise<Object>} RSS items data
    */
-  async function fetchDepartmentFeed(departmentId, fetchOptions = {}) {
-    // Generate RSS URL using the dedicated function
-    const rssUrl = await generateRSSUrl(departmentId)
-    const proxyUrl = generateProxyUrl(rssUrl, config.environment)
-    
-    // Check cache first
-    if (!fetchOptions.skipCache) {
-      const cached = getCachedData(proxyUrl)
-      if (cached) {
-        return cached
-      }
-    }
+  async function fetchRssItems(departmentIds, fetchOptions = {}) {
+    const {
+      limit = 50,
+      offset = 0,
+      search = null,
+      dateFilter = 'all',
+      sortBy = 'date-desc'
+    } = fetchOptions
 
-    let lastError
-    for (let attempt = 1; attempt <= config.retryAttempts; attempt++) {
-      try {
-        console.log(`Fetching RSS feed for ${department.name} (attempt ${attempt})`)
-        
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), config.timeout)
-        
-        const response = await fetch(proxyUrl, {
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/rss+xml, application/xml, text/xml',
-            'User-Agent': 'KNUE-RSS-Aggregator/1.0'
-          }
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    const params = new URLSearchParams({
+      departments: departmentIds.join(','),
+      limit: limit.toString(),
+      offset: offset.toString(),
+      sortBy
+    })
+
+    if (search) params.set('search', search)
+    if (dateFilter !== 'all') params.set('dateFilter', dateFilter)
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), config.timeout)
+
+    try {
+      const response = await fetch(`/api/rss/items?${params.toString()}`, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
-        
-        const xmlText = await response.text()
-        const parsedData = parseRSSFeed(xmlText)
-        
-        if (!validateRSSFeed(parsedData)) {
-          throw new Error('Invalid RSS feed structure')
-        }
-        
-        // Add department metadata (already in correct format from useDepartments)
-        const departmentForFeed = {
-          id: department.id,
-          name: department.name,
-          description: department.description || '',
-          icon: department.icon || '📋',
-          color: department.color || '#6B7280',
-          bbsNo: department.bbsNo,
-          priority: department.priority || 999
-        }
-        
-        const feedData = {
-          ...parsedData,
-          departmentId,
-          department: departmentForFeed,
-          fetchedAt: new Date(),
-          url: rssUrl
-        }
-        
-        // Cache the result
-        setCachedData(proxyUrl, feedData)
-        
-        return feedData
-        
-      } catch (error) {
-        lastError = error
-        console.warn(`Attempt ${attempt} failed for ${department.name}:`, error.message)
-        
-        if (attempt < config.retryAttempts) {
-          // Exponential backoff
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000))
-        }
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
+
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch RSS items')
+      }
+
+      return result
+    } catch (error) {
+      clearTimeout(timeoutId)
+      throw error
     }
-    
-    throw lastError
+  }
+
+  /**
+   * Refresh RSS feeds using the API endpoint
+   * @param {Array} departmentIds - Optional array of department identifiers
+   * @returns {Promise<Object>} Refresh result
+   */
+  async function refreshRssFeeds(departmentIds = null) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), config.timeout)
+
+    try {
+      const body = departmentIds ? { departments: departmentIds } : {}
+      
+      const response = await fetch('/api/rss/refresh', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to refresh RSS feeds')
+      }
+
+      return result
+    } catch (error) {
+      clearTimeout(timeoutId)
+      throw error
+    }
   }
 
   /**
@@ -254,64 +265,111 @@ export function useRssFeed(options = {}) {
   }
 
   async function performFetch(departmentIds, options = {}) {
-    // Filter out departments that are already being fetched or initialized (prevent duplicates)
-    const filteredDepartmentIds = departmentIds.filter(id => {
-      const isBeingFetched = pendingFetches.value.has(id)
-      const isAlreadyInitialized = initializedDepartments.value.has(id) && feeds.value.has(id)
-      return !isBeingFetched && !(isAlreadyInitialized && !options.skipCache)
-    })
-    
-    if (filteredDepartmentIds.length === 0) {
+    // Skip if already fetching these departments and not forcing refresh
+    if (!options.skipCache && departmentIds.every(id => pendingFetches.value.has(id) || (initializedDepartments.value.has(id) && feeds.value.has(id)))) {
       console.log('All requested departments are already being fetched or initialized, skipping duplicate requests')
       return
     }
 
     // Mark departments as being fetched
-    filteredDepartmentIds.forEach(id => pendingFetches.value.add(id))
+    departmentIds.forEach(id => pendingFetches.value.add(id))
 
     loading.value = true
     const startTime = Date.now()
 
     try {
       // Ensure departments are loaded efficiently
-      await ensureDepartmentsLoaded(filteredDepartmentIds)
+      await ensureDepartmentsLoaded(departmentIds)
 
       // Clear previous errors for these departments
-      filteredDepartmentIds.forEach(id => errors.value.delete(id))
+      departmentIds.forEach(id => errors.value.delete(id))
 
-      // Fetch feeds concurrently
-      const fetchPromises = filteredDepartmentIds.map(async (departmentId) => {
+      // If forcing refresh, refresh feeds first
+      if (options.skipCache) {
         try {
-          const feedData = await fetchDepartmentFeed(departmentId, options)
+          await refreshRssFeeds(departmentIds)
+          console.log('RSS feeds refreshed successfully')
+        } catch (error) {
+          console.warn('Failed to refresh RSS feeds:', error.message)
+        }
+      }
+
+      // Fetch RSS items using the new API
+      const result = await fetchRssItems(departmentIds, options)
+      
+      // Group items by department
+      const departmentItems = new Map()
+      
+      result.data.forEach(item => {
+        const deptId = item.department.id
+        if (!departmentItems.has(deptId)) {
+          departmentItems.set(deptId, [])
+        }
+        departmentItems.get(deptId).push({
+          id: item.id,
+          title: item.title,
+          link: item.link,
+          description: item.description,
+          pubDate: item.pubDate,
+          createdAt: item.createdAt
+        })
+      })
+
+      // Create feed data for each department
+      let successful = 0
+      let failed = 0
+
+      for (const departmentId of departmentIds) {
+        try {
+          const department = await getDepartment(departmentId)
+          const items = departmentItems.get(departmentId) || []
+          
+          const feedData = {
+            items,
+            departmentId,
+            department: {
+              id: department.id,
+              name: department.name,
+              description: department.description || '',
+              icon: department.icon || '📋',
+              color: department.color || '#6B7280',
+              bbsNo: department.bbs_no,
+              priority: department.priority || 999
+            },
+            fetchedAt: new Date(),
+            url: department.rss_url
+          }
+          
           feeds.value.set(departmentId, feedData)
-          initializedDepartments.value.add(departmentId) // Mark as successfully initialized
-          return { departmentId, success: true, data: feedData }
+          initializedDepartments.value.add(departmentId)
+          successful++
         } catch (error) {
           errors.value.set(departmentId, {
             message: error.message,
             timestamp: new Date(),
             departmentId
           })
-          return { departmentId, success: false, error }
-        } finally {
-          // Remove from pending fetches when done
-          pendingFetches.value.delete(departmentId)
+          failed++
         }
-      })
-
-      const results = await Promise.allSettled(fetchPromises)
-      
-      // Log results
-      const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length
-      const failed = results.filter(r => r.status === 'rejected' || !r.value?.success).length
+      }
       
       console.log(`RSS fetch completed: ${successful} successful, ${failed} failed (${Date.now() - startTime}ms)`)
       
       lastUpdate.value = new Date()
       
+    } catch (error) {
+      console.error('RSS fetch failed:', error)
+      // Mark all departments as failed
+      departmentIds.forEach(departmentId => {
+        errors.value.set(departmentId, {
+          message: error.message,
+          timestamp: new Date(),
+          departmentId
+        })
+      })
     } finally {
       // Clean up any remaining pending fetches
-      filteredDepartmentIds.forEach(id => pendingFetches.value.delete(id))
+      departmentIds.forEach(id => pendingFetches.value.delete(id))
       loading.value = false
     }
   }
@@ -471,7 +529,6 @@ export function useRssFeed(options = {}) {
 
     // Methods
     fetchFeeds,
-    fetchDepartmentFeed,
     refreshFeeds,
     clearCache,
     setupAutoRefresh,
@@ -480,7 +537,9 @@ export function useRssFeed(options = {}) {
     addActiveDepartment,
     removeActiveDepartment,
     generateRSSUrl,
-    generateProxyUrl
+    generateProxyUrl,
+    fetchRssItems,
+    refreshRssFeeds
   }
 }
 

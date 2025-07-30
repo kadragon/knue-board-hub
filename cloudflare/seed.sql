@@ -3,14 +3,13 @@
 
 -- Insert department configurations
 INSERT INTO departments (id, name, description, icon, color, rss_url, bbs_no, priority, is_active) VALUES
-('general', '일반공지', '전체 학교 공지사항', '📢', '#0066CC', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=94', 94, 1, 1),
-('academic', '학사공지', '학사 관련 공지사항', '🎓', '#FF6B35', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=95', 95, 2, 1),
-('employment', '취업공지', '취업 및 진로 정보', '💼', '#28A745', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=96', 96, 3, 1),
-('scholarship', '장학공지', '장학금 관련 정보', '💰', '#FFC107', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=97', 97, 4, 1),
-('dormitory', '생활관공지', '기숙사 생활 관련', '🏠', '#6F42C1', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=98', 98, 5, 1),
-('library', '도서관공지', '도서관 이용 안내', '📚', '#17A2B8', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=99', 99, 6, 1),
-('international', '국제교류공지', '국제교류 프로그램', '🌍', '#20C997', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=100', 100, 7, 1),
-('research', '연구공지', '연구 관련 공지', '🔬', '#E83E8C', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=101', 101, 8, 1);
+('general', '대학소식', '전체 학교 공지사항', '📢', '#0066CC', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=25', 25, 1, 1),
+('academic', '학사공지', '학사 관련 공지사항', '🎓', '#FF6B35', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=26', 26, 2, 1),
+('employment', '채용공지', '채용 공고', '💼', '#28A745', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=27', 27, 3, 0),
+('scholarship', '장학공지', '장학금 관련 정보', '💰', '#FFC107', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=209', 207, 4, 1),
+('seminar', '행사 세미나 안내', '행사 및 세미나 안내', '📅', '#9C27B0', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=28', 28, 5, 1),
+('tuition', '등록금', '등록금 관련 공지', '💳', '#795548', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=11', 11, 6, 1),
+('cheongram', '청람소양', '청람소양 관련 공지', '🌿', '#4CAF50', 'https://www.knue.ac.kr/rssBbsNtt.do?bbsNo=256', 256, 7, 1),
 
 -- Insert application settings
 INSERT INTO app_settings (key, value, description) VALUES

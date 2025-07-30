@@ -101,8 +101,16 @@ app.get('/api/rss/items', async (c) => {
 
 app.post('/api/rss/refresh', async (c) => {
   try {
-    const body = await c.req.json()
-    const departmentIds = body.departments || null
+    let departmentIds = null
+    
+    // Handle both empty body and JSON body cases
+    try {
+      const body = await c.req.json()
+      departmentIds = body.departments || null
+    } catch (jsonError) {
+      // If JSON parsing fails (e.g., empty body), use null (refresh all departments)
+      departmentIds = null
+    }
     
     const result = await RssService.refreshFeeds(c.env.DB, departmentIds)
     return c.json({
