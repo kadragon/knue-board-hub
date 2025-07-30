@@ -47,7 +47,7 @@
         <i
           v-if="canShare"
           @click.stop="handleShare"
-          class="i-tabler-share w-5 h-5 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+          class="i-tabler-share w-5 h-5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
           aria-label="공유하기"
           title="공유하기"
         />
@@ -60,14 +60,14 @@
             isBookmarked ? 'i-tabler-bookmark-filled' : 'i-tabler-bookmark',
             isBookmarked
               ? 'text-yellow-500 hover:text-yellow-600'
-              : 'text-gray-400 hover:text-gray-600'
+              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
           ]"
           :aria-label="isBookmarked ? '북마크 제거' : '북마크 추가'"
           :title="isBookmarked ? '북마크 제거' : '북마크 추가'"
         />
 
         <!-- External Link Icon -->
-        <i class="i-tabler-external-link w-5 h-5 text-gray-400" />
+        <i class="i-tabler-external-link w-5 h-5 text-gray-400 dark:text-gray-500" />
       </div>
     </div>
 

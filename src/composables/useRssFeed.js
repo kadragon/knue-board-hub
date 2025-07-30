@@ -41,6 +41,9 @@ export function useRssFeed(options = {}) {
   // Auto-refresh timer
   let refreshTimer = null
 
+  // localStorage key for persisting selected departments
+  const SELECTED_DEPARTMENTS_KEY = 'knue-board-hub:selected-departments'
+
   /**
    * Get department data efficiently using useDepartments composable
    * @param {string} departmentId - Department identifier
@@ -208,12 +211,44 @@ export function useRssFeed(options = {}) {
   }
 
   /**
-   * Set active departments (departments that should be included in allItems)
+   * Save selected departments to localStorage
    * @param {Array} departmentIds - Array of department identifiers
    */
-  function setActiveDepartments(departmentIds) {
+  function saveSelectedDepartments(departmentIds) {
+    try {
+      localStorage.setItem(SELECTED_DEPARTMENTS_KEY, JSON.stringify(departmentIds))
+    } catch (error) {
+      console.warn('Failed to save selected departments to localStorage:', error)
+    }
+  }
+
+  /**
+   * Load selected departments from localStorage
+   * @returns {Array} Array of department identifiers or empty array
+   */
+  function loadSelectedDepartments() {
+    try {
+      const stored = localStorage.getItem(SELECTED_DEPARTMENTS_KEY)
+      return stored ? JSON.parse(stored) : []
+    } catch (error) {
+      console.warn('Failed to load selected departments from localStorage:', error)
+      return []
+    }
+  }
+
+  /**
+   * Set active departments (departments that should be included in allItems)
+   * @param {Array} departmentIds - Array of department identifiers
+   * @param {boolean} persist - Whether to persist to localStorage (default: true)
+   */
+  function setActiveDepartments(departmentIds, persist = true) {
     activeDepartments.value.clear()
     departmentIds.forEach(id => activeDepartments.value.add(id))
+    
+    // Persist to localStorage by default
+    if (persist) {
+      saveSelectedDepartments(departmentIds)
+    }
   }
 
   /**
@@ -230,6 +265,36 @@ export function useRssFeed(options = {}) {
    */
   function removeActiveDepartment(departmentId) {
     activeDepartments.value.delete(departmentId)
+  }
+
+  /**
+   * Get selected departments from localStorage or fall back to defaults
+   * @returns {Promise<Array>} Array of department identifiers
+   */
+  async function getSelectedDepartments() {
+    const storedDepartments = loadSelectedDepartments()
+    
+    if (storedDepartments.length > 0) {
+      // Validate that stored departments still exist
+      await fetchDepartments() // Ensure departments are loaded
+      const validDepartments = []
+      
+      for (const deptId of storedDepartments) {
+        const dept = await getDepartmentFromComposable(deptId, false)
+        if (dept) {
+          validDepartments.push(deptId)
+        }
+      }
+      
+      if (validDepartments.length > 0) {
+        return validDepartments
+      }
+    }
+    
+    // Fall back to defaults if no valid stored departments
+    const { getDefaultDepartments } = useDepartments()
+    const defaultDepts = getDefaultDepartments()
+    return defaultDepts.map(dept => dept.id)
   }
 
   /**
@@ -536,6 +601,9 @@ export function useRssFeed(options = {}) {
     setActiveDepartments,
     addActiveDepartment,
     removeActiveDepartment,
+    getSelectedDepartments,
+    saveSelectedDepartments,
+    loadSelectedDepartments,
     generateRSSUrl,
     generateProxyUrl,
     fetchRssItems,

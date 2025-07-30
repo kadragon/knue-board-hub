@@ -12,6 +12,21 @@
               <span class="brand-text">KNUE 게시판</span>
             </router-link>
 
+            <!-- Actions (only on home page) -->
+            <div v-if="route.name === 'home'" class="nav-home-controls">
+              <button 
+                @click="handleRefresh"
+                class="nav-refresh-btn"
+                :disabled="isRefreshing"
+                title="새로고침"
+              >
+                <i 
+                  class="w-5 h-5"
+                  :class="isRefreshing ? 'i-tabler-loader-2 animate-spin' : 'i-tabler-refresh'"
+                />
+              </button>
+            </div>
+
             <!-- Desktop Navigation -->
             <div class="nav-menu desktop-only">
               <router-link
@@ -184,6 +199,7 @@ const globalLoading = ref(false)
 const showPwaPrompt = ref(false)
 const pwaPromptEvent = ref(null)
 const retryingConnection = ref(false)
+const isRefreshing = ref(false)
 
 // Navigation
 const navRoutes = computed(() => getNavRoutes())
@@ -252,6 +268,28 @@ function closeMobileMenu() {
   document.body.style.overflow = ''
 }
 
+async function handleRefresh() {
+  if (isRefreshing.value) return
+  
+  isRefreshing.value = true
+  
+  try {
+    // Emit a custom event that RssFeedList can listen to
+    window.dispatchEvent(new CustomEvent('app-refresh'))
+    
+    // Show success after a delay to allow components to refresh
+    setTimeout(() => {
+      showSuccess('게시판이 새로고침되었습니다')
+    }, 500)
+  } catch (error) {
+    showError('새로고침 중 오류가 발생했습니다')
+  } finally {
+    setTimeout(() => {
+      isRefreshing.value = false
+    }, 1000)
+  }
+}
+
 async function retryConnection() {
   if (retryingConnection.value) return
   
@@ -287,9 +325,6 @@ function handleOnlineStatus() {
   }
 }
 
-function handleGlobalLoading(loading) {
-  globalLoading.value = loading
-}
 
 // PWA functionality
 function handlePwaPrompt(event) {
@@ -455,9 +490,10 @@ if (import.meta.env.DEV) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1.5rem;
   max-width: 1200px;
   margin: 0 auto;
+  min-height: 3.5rem;
 }
 
 /* Brand */
@@ -467,8 +503,9 @@ if (import.meta.env.DEV) {
   text-decoration: none;
   color: theme('colors.gray.900');
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   transition: color 0.2s ease;
+  flex-shrink: 0;
 }
 
 .nav-brand:hover {
@@ -478,6 +515,42 @@ if (import.meta.env.DEV) {
 .brand-text {
   white-space: nowrap;
 }
+
+/* Home Controls */
+.nav-home-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  max-width: 400px;
+  margin: 0 1rem;
+}
+
+.nav-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  background: transparent;
+  color: theme('colors.gray.600');
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.nav-refresh-btn:hover:not(:disabled) {
+  background: theme('colors.gray.100');
+  color: theme('colors.knue.primary');
+}
+
+.nav-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 
 /* Desktop Navigation */
 .nav-menu {
@@ -543,13 +616,13 @@ if (import.meta.env.DEV) {
 /* Mobile Navigation */
 .mobile-nav {
   position: absolute;
-  top: calc(64px + env(safe-area-inset-top, 0px));
+  top: calc(3.5rem + env(safe-area-inset-top, 0px));
   left: 0;
   right: 0;
   background: white;
   border-bottom: 1px solid theme('colors.gray.200');
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  max-height: calc(100vh - 64px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  max-height: calc(100vh - 3.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
 }
 
@@ -654,7 +727,7 @@ if (import.meta.env.DEV) {
 
 /* Route Component */
 .route-component {
-  min-height: calc(100vh - 4rem);
+  min-height: calc(100vh - 3.5rem);
 }
 
 /* Global Loading Overlay */
@@ -824,16 +897,32 @@ if (import.meta.env.DEV) {
   }
   
   .nav-container {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
+    min-height: 3rem;
   }
   
   .brand-text {
     display: none;
   }
   
+  .nav-home-controls {
+    max-width: none;
+    margin: 0 0.5rem;
+    flex: 1;
+  }
+  
+  .nav-refresh-btn {
+    width: 2rem;
+    height: 2rem;
+  }
+  
   .mobile-nav {
-    top: calc(56px + env(safe-area-inset-top, 0px));
-    max-height: calc(100vh - 56px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    top: calc(3rem + env(safe-area-inset-top, 0px));
+    max-height: calc(100vh - 3rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+  
+  .route-component {
+    min-height: calc(100vh - 3rem);
   }
   
   .mobile-nav-link {
@@ -949,6 +1038,15 @@ if (import.meta.env.DEV) {
     background: theme('colors.gray.700');
   }
   
+  .nav-refresh-btn {
+    color: theme('colors.gray.400');
+  }
+  
+  .nav-refresh-btn:hover:not(:disabled) {
+    background: theme('colors.gray.700');
+    color: theme('colors.knue.primary');
+  }
+  
   .nav-active {
     background: theme('colors.gray.700');
   }
@@ -991,6 +1089,80 @@ if (import.meta.env.DEV) {
   .pwa-description {
     color: theme('colors.gray.400');
   }
+}
+
+/* Dark Mode via class (for manual theme switching) */
+.dark .app-container {
+  background: theme('colors.gray.900');
+}
+
+.dark .app-header {
+  background: theme('colors.gray.800');
+  border-color: theme('colors.gray.700');
+}
+
+.dark .nav-brand {
+  color: theme('colors.gray.100');
+}
+
+.dark .nav-link {
+  color: theme('colors.gray.300');
+}
+
+.dark .nav-link:hover {
+  background: theme('colors.gray.700');
+}
+
+.dark .nav-active {
+  background: theme('colors.gray.700');
+}
+
+.dark .nav-refresh-btn {
+  color: theme('colors.gray.400');
+}
+
+.dark .nav-refresh-btn:hover:not(:disabled) {
+  background: theme('colors.gray.700');
+  color: theme('colors.knue.primary');
+}
+
+.dark .mobile-nav {
+  background: theme('colors.gray.800');
+  border-color: theme('colors.gray.700');
+}
+
+.dark .mobile-nav-link {
+  color: theme('colors.gray.300');
+}
+
+.dark .mobile-nav-link:hover {
+  background: theme('colors.gray.700');
+}
+
+.dark .bottom-nav {
+  background: theme('colors.gray.800');
+  border-color: theme('colors.gray.700');
+}
+
+.dark .bottom-nav-item {
+  color: theme('colors.gray.400');
+}
+
+.dark .bottom-nav-item:hover {
+  background: theme('colors.gray.700');
+}
+
+.dark .pwa-prompt {
+  background: theme('colors.gray.800');
+  border-color: theme('colors.gray.700');
+}
+
+.dark .pwa-title {
+  color: theme('colors.gray.100');
+}
+
+.dark .pwa-description {
+  color: theme('colors.gray.400');
 }
 
 /* Mobile Menu Open State */

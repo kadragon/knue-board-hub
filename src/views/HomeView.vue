@@ -28,4 +28,14 @@ defineOptions({
   min-height: 100vh;
   background: var(--gray-50);
 }
+
+@media (prefers-color-scheme: dark) {
+  .home-view {
+    background: theme('colors.gray.900');
+  }
+}
+
+.dark .home-view {
+  background: theme('colors.gray.900');
+}
 </style>

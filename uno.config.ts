@@ -118,7 +118,7 @@ export default defineConfig({
     'section-spacing': 'py-4 sm:py-6',
     
     // Card shortcuts
-    'card-base': 'bg-white rounded-xl shadow-sm border border-gray-100',
+    'card-base': 'bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700',
     'card-hover': 'hover:shadow-md hover:scale-102 transition-all duration-200 ease-out',
     'card-touch': 'active:scale-98 touch-manipulation',
     'card-rss': 'card-base card-hover card-touch p-4 mb-3',
@@ -126,35 +126,35 @@ export default defineConfig({
     // Button shortcuts
     'btn-base': 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 ease-out touch-manipulation',
     'btn-primary': 'btn-base bg-knue-primary text-white hover:bg-knue-secondary active:scale-95 shadow-sm',
-    'btn-secondary': 'btn-base bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95',
+    'btn-secondary': 'btn-base bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95',
     'btn-touch': 'min-h-11 px-4 py-2 min-w-11',
     'btn-icon': 'btn-base p-2 rounded-full',
     
     // Text shortcuts
-    'text-title': 'text-lg font-semibold text-gray-900 leading-tight',
-    'text-subtitle': 'text-base font-medium text-gray-700',
-    'text-body': 'text-sm text-gray-600 leading-relaxed',
-    'text-caption': 'text-xs text-gray-500',
+    'text-title': 'text-lg font-semibold text-gray-900 dark:text-gray-100 leading-tight',
+    'text-subtitle': 'text-base font-medium text-gray-700 dark:text-gray-300',
+    'text-body': 'text-sm text-gray-600 dark:text-gray-400 leading-relaxed',
+    'text-caption': 'text-xs text-gray-500 dark:text-gray-500',
     'text-link': 'text-knue-primary hover:text-knue-secondary underline-offset-2',
     
     // Department badges
     'badge-department': 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-    'badge-main': 'badge-department bg-blue-100 text-blue-800',
-    'badge-academic': 'badge-department bg-green-100 text-green-800',
-    'badge-employment': 'badge-department bg-cyan-100 text-cyan-800',
-    'badge-scholarship': 'badge-department bg-yellow-100 text-yellow-800',
-    'badge-event': 'badge-department bg-pink-100 text-pink-800',
-    'badge-research': 'badge-department bg-purple-100 text-purple-800',
-    'badge-library': 'badge-department bg-orange-100 text-orange-800',
+    'badge-main': 'badge-department bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300',
+    'badge-academic': 'badge-department bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+    'badge-employment': 'badge-department bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300',
+    'badge-scholarship': 'badge-department bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300',
+    'badge-event': 'badge-department bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300',
+    'badge-research': 'badge-department bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300',
+    'badge-library': 'badge-department bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300',
     
     // Loading states
-    'skeleton': 'animate-pulse bg-gray-200 rounded',
+    'skeleton': 'animate-pulse bg-gray-200 dark:bg-gray-700 rounded',
     'skeleton-text': 'skeleton h-4 w-full',
     'skeleton-title': 'skeleton h-5 w-3/4',
     'skeleton-circle': 'skeleton rounded-full',
     
     // Touch feedback
-    'touch-feedback': 'active:bg-gray-50 active:scale-98 transition-all duration-150',
+    'touch-feedback': 'active:bg-gray-50 dark:active:bg-gray-800 active:scale-98 transition-all duration-150',
     'ripple-effect': 'relative overflow-hidden before:absolute before:inset-0 before:bg-current before:opacity-0 before:scale-0 active:before:opacity-10 active:before:scale-100 before:transition-all before:duration-300',
     
     // Safe area
@@ -211,12 +211,12 @@ export default defineConfig({
       }
     },
     
-    // Dark mode support
+    // Dark mode support (class-based)
     (matcher) => {
       if (!matcher.startsWith('dark:')) return matcher
       return {
         matcher: matcher.slice(5),
-        selector: s => `@media (prefers-color-scheme: dark) { ${s} }`
+        selector: s => `.dark ${s}`
       }
     }
   ],
