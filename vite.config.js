@@ -7,9 +7,8 @@ export default defineConfig({
   plugins: [vue(), UnoCSS()],
   server: {
     proxy: {
-      // Proxy API calls to Cloudflare Worker (run with: npx wrangler dev)
-      // Must be before /api/rss to match more specific routes first
-      '^/api/(?!rss).*': {
+      // Proxy Worker API endpoints to Cloudflare Worker
+      '^/api/(departments|rss/(items|refresh)|health|auth|user)': {
         target: 'http://localhost:8787',
         changeOrigin: true,
         configure: (proxy, options) => {
@@ -22,12 +21,12 @@ export default defineConfig({
           })
         }
       },
-      // CORS proxy for RSS feeds during development
+      // CORS proxy for direct RSS XML fetching (legacy, for development only)
       '/api/rss': {
         target: 'https://www.knue.ac.kr',
         changeOrigin: true,
         rewrite: (path) => {
-          // Extract URL from query parameter
+          // Only handle direct RSS XML requests with ?url= parameter
           const url = new URL(`http://localhost${path}`)
           const targetUrl = url.searchParams.get('url')
           if (targetUrl) {
