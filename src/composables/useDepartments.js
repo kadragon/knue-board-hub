@@ -1,10 +1,12 @@
 /**
  * Departments Management Composable
- * Fetches department data from Cloudflare Worker API connected to D1 database
+ * Enhanced with localStorage cache-first pattern and D1 rehydration
  */
 
 import { ref, computed, onMounted } from 'vue'
 import { apiService } from '../services/apiService.js'
+import { RehydrationManager } from '../services/rehydrationManager.js'
+import { cacheManager } from '../services/cacheManager.js'
 
 // Shared state for departments across components
 const departments = ref([])
@@ -13,8 +15,8 @@ const error = ref(null)
 const lastFetch = ref(null)
 const isInitialized = ref(false)
 
-// Cache duration: 5 minutes
-const CACHE_DURATION = 5 * 60 * 1000
+// Initialize rehydration manager
+const rehydrationManager = new RehydrationManager(apiService)
 
 /**
  * Main departments composable
@@ -22,26 +24,35 @@ const CACHE_DURATION = 5 * 60 * 1000
  */
 export function useDepartments() {
   /**
-   * Fetch departments from API
+   * Fetch departments with cache-first pattern
    * @param {boolean} forceRefresh - Skip cache and force refresh
    */
   async function fetchDepartments(forceRefresh = false) {
-    // Check cache first
-    if (!forceRefresh && lastFetch.value && 
-        Date.now() - lastFetch.value < CACHE_DURATION && 
-        departments.value.length > 0) {
-      return departments.value
-    }
-
     loading.value = true
     error.value = null
 
     try {
-      console.log('Fetching departments from API...')
-      const response = await apiService.getDepartments()
+      console.log(`📋 Fetching departments${forceRefresh ? ' (force refresh)' : ' (cache-first)'}...`)
       
-      if (response.success && response.data) {
-        departments.value = response.data.map(dept => ({
+      // Use rehydration manager for cache-first approach
+      const result = await rehydrationManager.getData(
+        'departments',
+        async () => {
+          const response = await apiService.getDepartments()
+          if (!response.success || !response.data) {
+            throw new Error(response.error || 'Failed to fetch departments')
+          }
+          return response
+        },
+        { 
+          category: 'departments', 
+          forceRefresh,
+          allowStale: true 
+        }
+      )
+
+      if (result.success && result.data) {
+        const processedDepartments = result.data.map(dept => ({
           id: dept.id,
           name: dept.name,
           description: dept.description || '',
@@ -54,25 +65,62 @@ export function useDepartments() {
         }))
         
         // Sort by priority
-        departments.value.sort((a, b) => a.priority - b.priority)
+        processedDepartments.sort((a, b) => a.priority - b.priority)
         
+        departments.value = processedDepartments
         lastFetch.value = Date.now()
         isInitialized.value = true
-        console.log(`Loaded ${departments.value.length} departments from D1 database`)
+        
+        // Log cache status
+        const cacheStatus = result._metadata?.cached ? 
+          `from cache (age: ${Math.round((result._metadata.age || 0)/1000)}s${result._metadata.stale ? ', stale' : ''})` :
+          'from server (fresh)'
+        
+        console.log(`📋 Loaded ${departments.value.length} departments ${cacheStatus}`)
         
         return departments.value
       } else {
-        throw new Error(response.error || 'Failed to fetch departments')
+        throw new Error(result.error || 'Failed to fetch departments')
       }
     } catch (err) {
-      console.error('Error fetching departments:', err)
+      console.error('📋 Error fetching departments:', err)
       error.value = {
         message: err.message,
-        timestamp: new Date()
+        timestamp: new Date(),
+        fromCache: err.message.includes('stale cache')
+      }
+      
+      // Try to use any existing cached data as last resort
+      if (departments.value.length === 0) {
+        try {
+          const staleCache = await cacheManager.get('departments', 'departments', true) // ignore TTL
+          if (staleCache?.data?.success && staleCache.data.data) {
+            console.warn('📋 Using emergency stale cache for departments')
+            const staleDepartments = staleCache.data.data.map(dept => ({
+              id: dept.id,
+              name: dept.name,
+              description: dept.description || '',
+              icon: dept.icon || '📋',
+              color: dept.color || '#6B7280',
+              bbsNo: dept.bbs_no,
+              priority: dept.priority || 999,
+              rssUrl: dept.rss_url,
+              isActive: dept.is_active !== 0
+            }))
+            staleDepartments.sort((a, b) => a.priority - b.priority)
+            departments.value = staleDepartments
+            isInitialized.value = true
+            return departments.value
+          }
+        } catch (cacheErr) {
+          console.warn('📋 Emergency cache lookup failed:', cacheErr)
+        }
       }
       
       // Fallback to empty array to prevent app crashes
-      departments.value = []
+      if (departments.value.length === 0) {
+        departments.value = []
+      }
       throw err
     } finally {
       loading.value = false
@@ -80,19 +128,39 @@ export function useDepartments() {
   }
 
   /**
-   * Get department by ID
+   * Get department by ID with individual caching
    * @param {string} departmentId - Department identifier
    * @param {boolean} fetchIfMissing - Auto-fetch if department not found
    * @returns {Object|null} Department data or null
    */
   async function getDepartment(departmentId, fetchIfMissing = true) {
+    // First check in-memory departments
     let department = departments.value.find(dept => dept.id === departmentId)
+    if (department) {
+      return department
+    }
+
+    // Try individual department cache
+    try {
+      const cachedDept = await cacheManager.get(`department:${departmentId}`, 'departments')
+      if (cachedDept) {
+        console.log(`📋 Found individual department cache for: ${departmentId}`)
+        return cachedDept.data
+      }
+    } catch (error) {
+      console.warn(`📋 Individual department cache lookup failed for ${departmentId}:`, error)
+    }
     
     // If not found and fetch is allowed, try fetching all departments
     if (!department && fetchIfMissing && !loading.value) {
-      console.log(`Department ${departmentId} not found in cache, fetching all departments...`)
+      console.log(`📋 Department ${departmentId} not found, fetching all departments...`)
       await fetchDepartments()
       department = departments.value.find(dept => dept.id === departmentId)
+      
+      // Cache individual department for faster future access
+      if (department) {
+        await cacheManager.set(`department:${departmentId}`, department, 'departments')
+      }
     }
     
     return department || null
@@ -125,6 +193,41 @@ export function useDepartments() {
     return departments.value.slice(0, 3)
   }
 
+  /**
+   * Preload critical departments for faster access
+   * @returns {Promise<void>}
+   */
+  async function preloadCriticalDepartments() {
+    const criticalDepartmentIds = ['main', 'academic'] // High-priority departments
+    console.log('📋 Preloading critical departments:', criticalDepartmentIds.join(', '))
+    
+    const preloadPromises = criticalDepartmentIds.map(async (departmentId) => {
+      try {
+        await getDepartment(departmentId, true)
+        console.log(`📋 Preloaded: ${departmentId}`)
+      } catch (error) {
+        console.warn(`📋 Preload failed for ${departmentId}:`, error.message)
+      }
+    })
+
+    await Promise.allSettled(preloadPromises)
+    console.log('📋 Critical departments preloading completed')
+  }
+
+  /**
+   * Get cache statistics for departments
+   * @returns {Object} Cache statistics
+   */
+  function getDepartmentCacheStats() {
+    return {
+      cacheManager: cacheManager.getStats(),
+      rehydrationManager: rehydrationManager.getStats(),
+      departmentsLoaded: departments.value.length,
+      isInitialized: isInitialized.value,
+      lastFetch: lastFetch.value
+    }
+  }
+
   // Computed properties
   const allDepartments = computed(() => departments.value)
   
@@ -140,10 +243,16 @@ export function useDepartments() {
   
   const initialized = computed(() => isInitialized.value)
 
-  // Auto-fetch on mount if not already loaded
-  onMounted(() => {
+  // Auto-fetch on mount with preloading
+  onMounted(async () => {
     if (departments.value.length === 0 && !loading.value) {
-      fetchDepartments()
+      try {
+        await fetchDepartments()
+        // Preload critical departments after initial load
+        await preloadCriticalDepartments()
+      } catch (error) {
+        console.warn('📋 Initial department loading failed:', error)
+      }
     }
   })
 
@@ -165,7 +274,9 @@ export function useDepartments() {
     getDepartment,
     getDepartmentsByIds,
     getDefaultDepartments,
-    getDefaultDepartmentObjects
+    getDefaultDepartmentObjects,
+    preloadCriticalDepartments,
+    getDepartmentCacheStats
   }
 }
 

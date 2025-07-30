@@ -1,12 +1,15 @@
 /**
  * RSS Feed Management Composable
- * Vue 3 Composition API for handling RSS feed data and state
+ * Enhanced with localStorage cache-first pattern and intelligent rehydration
  */
 
-import { ref, reactive, computed, watch, onMounted, onUnmounted, readonly, nextTick } from 'vue'
-import { parseRSSFeed, validateRSSFeed, sortItemsByDate, filterItemsByDate } from '../utils/rssParser.js'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, readonly } from 'vue'
+import { sortItemsByDate, filterItemsByDate } from '../utils/rssParser.js'
 import { RSS_CONFIG } from '../config/departments.js'
 import { useDepartments } from './useDepartments.js'
+import { RehydrationManager } from '../services/rehydrationManager.js'
+import { cacheManager } from '../services/cacheManager.js'
+import { apiService } from '../services/apiService.js'
 
 /**
  * Main RSS feed composable
@@ -17,12 +20,14 @@ export function useRssFeed(options = {}) {
   // Use departments composable for efficient department data management
   const { getDepartment: getDepartmentFromComposable, fetchDepartments } = useDepartments()
   
+  // Initialize rehydration manager for RSS data
+  const rehydrationManager = new RehydrationManager(apiService)
+  
   // Reactive state
   const feeds = ref(new Map()) // Map<departmentId, feedData>
   const loading = ref(false)
   const errors = ref(new Map()) // Map<departmentId, error>
   const lastUpdate = ref(null)
-  const cache = ref(new Map()) // Map<url, {data, timestamp}>
   const pendingFetches = ref(new Set()) // Track ongoing fetches to prevent duplicates
   let fetchDebounceTimer = null // Debounce timer to prevent rapid successive calls
   const initializedDepartments = ref(new Set()) // Track which departments have been initialized
@@ -41,8 +46,30 @@ export function useRssFeed(options = {}) {
   // Auto-refresh timer
   let refreshTimer = null
 
-  // localStorage key for persisting selected departments
+  // localStorage keys for persisting user data
   const SELECTED_DEPARTMENTS_KEY = 'knue-board-hub:selected-departments'
+  const RECENT_DEPARTMENTS_KEY = 'user:recent-departments'
+
+  /**
+   * Track recently accessed departments for predictive loading
+   * @param {Array} departmentIds - Department IDs to track
+   */
+  async function trackRecentDepartments(departmentIds) {
+    try {
+      const cached = await cacheManager.get(RECENT_DEPARTMENTS_KEY, 'preferences')
+      const recentDepts = cached?.data || []
+      
+      // Add new departments to the front, remove duplicates, keep last 10
+      const updated = [
+        ...departmentIds,
+        ...recentDepts.filter(id => !departmentIds.includes(id))
+      ].slice(0, 10)
+      
+      await cacheManager.set(RECENT_DEPARTMENTS_KEY, updated, 'preferences')
+    } catch (error) {
+      console.warn('📰 Failed to track recent departments:', error)
+    }
+  }
 
   /**
    * Get department data efficiently using useDepartments composable
@@ -101,10 +128,10 @@ export function useRssFeed(options = {}) {
   }
 
   /**
-   * Fetch RSS items using the new API endpoint
+   * Fetch RSS items with cache-first pattern and smart caching
    * @param {Array} departmentIds - Array of department identifiers
    * @param {Object} fetchOptions - Fetch options
-   * @returns {Promise<Object>} RSS items data
+   * @returns {Promise<Object>} RSS items data with cache metadata
    */
   async function fetchRssItems(departmentIds, fetchOptions = {}) {
     const {
@@ -112,48 +139,82 @@ export function useRssFeed(options = {}) {
       offset = 0,
       search = null,
       dateFilter = 'all',
-      sortBy = 'date-desc'
+      sortBy = 'date-desc',
+      skipCache = false
     } = fetchOptions
 
-    const params = new URLSearchParams({
-      departments: departmentIds.join(','),
-      limit: limit.toString(),
-      offset: offset.toString(),
-      sortBy
-    })
+    // Create smart cache key that includes all relevant parameters
+    const sortedDeptIds = [...departmentIds].sort()
+    const cacheKey = `rss:${sortedDeptIds.join(',')}:${JSON.stringify({
+      limit, offset, search, dateFilter, sortBy
+    })}`
 
-    if (search) params.set('search', search)
-    if (dateFilter !== 'all') params.set('dateFilter', dateFilter)
+    console.log(`📰 Fetching RSS items for departments: ${sortedDeptIds.join(', ')}${skipCache ? ' (force refresh)' : ' (cache-first)'}`)
 
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), config.timeout)
+    // Track recent departments for predictive loading
+    await trackRecentDepartments(departmentIds)
 
-    try {
-      const response = await fetch(`/api/rss/items?${params.toString()}`, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+    // Use rehydration manager for cache-first approach
+    const result = await rehydrationManager.getData(
+      cacheKey,
+      async () => {
+        // Fetch function that calls the API
+        const params = new URLSearchParams({
+          departments: departmentIds.join(','),
+          limit: limit.toString(),
+          offset: offset.toString(),
+          sortBy
+        })
+
+        if (search) params.set('search', search)
+        if (dateFilter !== 'all') params.set('dateFilter', dateFilter)
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), config.timeout)
+
+        try {
+          const response = await fetch(`/api/rss/items?${params.toString()}`, {
+            signal: controller.signal,
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            }
+          })
+
+          clearTimeout(timeoutId)
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+
+          const apiResult = await response.json()
+          
+          if (!apiResult.success) {
+            throw new Error(apiResult.error || 'Failed to fetch RSS items')
+          }
+
+          return apiResult
+        } catch (error) {
+          clearTimeout(timeoutId)
+          throw error
         }
-      })
-
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      },
+      {
+        category: 'rssItems',
+        forceRefresh: skipCache,
+        allowStale: true,
+        timeout: config.timeout
       }
+    )
 
-      const result = await response.json()
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch RSS items')
-      }
+    // Log cache performance
+    const cacheStatus = result._metadata?.cached ? 
+      `from cache (age: ${Math.round((result._metadata.age || 0)/1000)}s${result._metadata.stale ? ', stale' : ''})` :
+      result._metadata?.fallback ? 'from stale cache (network error)' : 'from server (fresh)'
+    
+    console.log(`📰 RSS items loaded ${cacheStatus}: ${result.data?.length || 0} items`)
 
-      return result
-    } catch (error) {
-      clearTimeout(timeoutId)
-      throw error
-    }
+    return result
   }
 
   /**
@@ -331,8 +392,11 @@ export function useRssFeed(options = {}) {
 
   async function performFetch(departmentIds, options = {}) {
     // Skip if already fetching these departments and not forcing refresh
-    if (!options.skipCache && departmentIds.every(id => pendingFetches.value.has(id) || (initializedDepartments.value.has(id) && feeds.value.has(id)))) {
-      console.log('All requested departments are already being fetched or initialized, skipping duplicate requests')
+    if (!options.skipCache && departmentIds.every(id => 
+      pendingFetches.value.has(id) || 
+      (initializedDepartments.value.has(id) && feeds.value.has(id))
+    )) {
+      console.log('📰 All requested departments are already being fetched or initialized, skipping duplicate requests')
       return
     }
 
@@ -353,14 +417,14 @@ export function useRssFeed(options = {}) {
       if (options.skipCache) {
         try {
           await refreshRssFeeds(departmentIds)
-          console.log('RSS feeds refreshed successfully')
+          console.log('📰 RSS feeds refreshed successfully')
         } catch (error) {
-          console.warn('Failed to refresh RSS feeds:', error.message)
+          console.warn('📰 Failed to refresh RSS feeds:', error.message)
         }
       }
 
-      // Fetch RSS items using the new API
-      const result = await fetchRssItems(departmentIds, options)
+      // Fetch RSS items using the enhanced cache-first API
+      const result = await fetchRssItems(departmentIds, { ...options, skipCache: options.skipCache })
       
       // Group items by department
       const departmentItems = new Map()
@@ -440,55 +504,91 @@ export function useRssFeed(options = {}) {
   }
 
   /**
-   * Refresh all current feeds
+   * Refresh feeds with optimistic updates for better UX
    * @param {Object} options - Refresh options
    */
   async function refreshFeeds(options = {}) {
     const currentDepartments = Array.from(activeDepartments.value)
-    if (currentDepartments.length > 0) {
-      await fetchFeeds(currentDepartments, { ...options, skipCache: true })
-    }
-  }
+    if (currentDepartments.length === 0) return
 
-  /**
-   * Get cached data if still valid
-   * @param {string} url - Cache key
-   * @returns {Object|null} Cached data or null
-   */
-  function getCachedData(url) {
-    const cached = cache.value.get(url)
-    if (cached && Date.now() - cached.timestamp < config.cacheDuration) {
-      // Reduce console spam by only logging occasionally
-      if (Math.random() < 0.1) {
-        console.log(`Using cached data for ${url}`)
+    console.log('📰 Refreshing feeds with optimistic updates...')
+    
+    // Step 1: Show existing cached data immediately if available
+    if (!options.skipCache) {
+      try {
+        await fetchFeeds(currentDepartments, { ...options, skipCache: false })
+        console.log('📰 Displaying cached data while refreshing in background')
+      } catch (error) {
+        console.warn('📰 Failed to load cached data:', error)
       }
-      return cached.data
     }
-    return null
+
+    // Step 2: Refresh in background after short delay
+    setTimeout(async () => {
+      try {
+        await fetchFeeds(currentDepartments, { ...options, skipCache: true })
+        console.log('📰 Background refresh completed')
+      } catch (error) {
+        console.warn('📰 Background refresh failed:', error)
+      }
+    }, 500)
   }
 
   /**
-   * Set data in cache
-   * @param {string} url - Cache key
-   * @param {Object} data - Data to cache
+   * Intelligent prefetching based on user behavior
+   * @returns {Promise<void>}
    */
-  function setCachedData(url, data) {
-    cache.value.set(url, {
-      data,
-      timestamp: Date.now()
-    })
+  async function prefetchLikelyContent() {
+    try {
+      const recentDepts = await cacheManager.get(RECENT_DEPARTMENTS_KEY, 'preferences')
+      const recentDepartments = recentDepts?.data || []
+      
+      if (recentDepartments.length === 0) return
+
+      console.log('📰 Prefetching content for recently viewed departments:', recentDepartments.slice(0, 3).join(', '))
+      
+      // Prefetch top 3 recent departments in background
+      recentDepartments.slice(0, 3).forEach((deptId, index) => {
+        setTimeout(async () => {
+          try {
+            await fetchRssItems([deptId], { limit: 20 })
+            console.log(`📰 Prefetched content for: ${deptId}`)
+          } catch (error) {
+            console.warn(`📰 Prefetch failed for ${deptId}:`, error.message)
+          }
+        }, Math.random() * 2000 + (index * 500)) // Stagger requests
+      })
+    } catch (error) {
+      console.warn('📰 Prefetch operation failed:', error)
+    }
   }
 
   /**
-   * Clear cache
-   * @param {string} url - Optional specific URL to clear
+   * Get RSS cache statistics
+   * @returns {Object} Cache statistics
    */
-  function clearCache(url = null) {
-    if (url) {
-      cache.value.delete(url)
+  function getRssCacheStats() {
+    return {
+      cacheManager: cacheManager.getStats(),
+      rehydrationManager: rehydrationManager.getStats(),
+      feedsLoaded: feeds.value.size,
+      activeDepartments: activeDepartments.value.size,
+      totalItems: totalItems.value,
+      lastUpdate: lastUpdate.value
+    }
+  }
+
+  /**
+   * Clear cache using the new cache manager
+   * @param {string} category - Optional specific category to clear
+   */
+  function clearCache(category = null) {
+    if (category) {
+      cacheManager.clear(category)
     } else {
-      cache.value.clear()
+      cacheManager.clear()
     }
+    console.log('📰 RSS cache cleared')
   }
 
 
@@ -561,10 +661,15 @@ export function useRssFeed(options = {}) {
   })
 
   // Lifecycle
-  onMounted(() => {
+  onMounted(async () => {
     if (config.autoRefresh) {
       setupAutoRefresh()
     }
+    
+    // Start intelligent prefetching after short delay
+    setTimeout(() => {
+      prefetchLikelyContent()
+    }, 2000)
   })
 
   onUnmounted(() => {
@@ -607,7 +712,12 @@ export function useRssFeed(options = {}) {
     generateRSSUrl,
     generateProxyUrl,
     fetchRssItems,
-    refreshRssFeeds
+    refreshRssFeeds,
+    
+    // Enhanced cache-first methods
+    prefetchLikelyContent,
+    getRssCacheStats,
+    trackRecentDepartments
   }
 }
 
