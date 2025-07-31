@@ -7,6 +7,18 @@
     "cloudflare-bindings": {
       "command": "npx",
       "args": ["mcp-remote", "https://bindings.mcp.cloudflare.com/sse"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "@21st-dev/magic": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@21st-dev/magic@latest",
+        "API_KEY=\"03ea18ef2d101396bc68da81a7238c0b0909db4c6b4f33324484a5a9e26bc1da\""
+      ]
     }
   }
 }

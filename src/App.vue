@@ -172,6 +172,9 @@
         </div>
       </div>
     </Transition>
+    
+    <!-- Cache Debugger (only in development) -->
+    <CacheDebugger v-if="isDevelopment" />
   </div>
 </template>
 
@@ -184,6 +187,7 @@ import { useGlobalNotifications } from './composables/useNotifications.js'
 // Components
 import NotificationToast from './components/NotificationToast.vue'
 import LoadingSpinner from './components/LoadingSpinner.vue'
+import CacheDebugger from './components/CacheDebugger.vue'
 
 // Router
 const router = useRouter()
@@ -222,6 +226,8 @@ const layoutClass = computed(() => {
   
   return classes
 })
+
+const isDevelopment = computed(() => import.meta.env.DEV)
 
 const mainClass = computed(() => {
   const classes = []
