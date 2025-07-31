@@ -1,7 +1,9 @@
 /**
  * localStorage Cache Manager
- * Provides cache-first storage with TTL validation and intelligent cleanup
+ * Provides cache-first storage with TTL validation, intelligent cleanup, and advanced compression
  */
+
+import LZString from 'lz-string'
 
 export class CacheManager {
   constructor() {
@@ -14,6 +16,13 @@ export class CacheManager {
     }
     this.maxStorageSize = 10 * 1024 * 1024 // 10MB limit
     this.compressionEnabled = this.checkCompressionSupport()
+    this.compressionThreshold = 5 * 1024 // Compress items larger than 5KB
+    this.compressionStats = {
+      totalCompressions: 0,
+      totalBytesOriginal: 0,
+      totalBytesCompressed: 0,
+      averageCompressionRatio: 0
+    }
   }
 
   /**
@@ -46,7 +55,7 @@ export class CacheManager {
       // Decompress if needed
       let finalData = data
       if (compressed) {
-        finalData = await this.decompress(data)
+        finalData = await this.decompress(data, true) // true = is compressed
       }
 
       return {
@@ -72,10 +81,29 @@ export class CacheManager {
    */
   async set(key, data, category = 'default') {
     const serialized = JSON.stringify(data)
+    const originalSize = serialized.length
     
-    // Compress large payloads (>10KB)
-    const shouldCompress = serialized.length > 10240 && this.compressionEnabled
-    const finalData = shouldCompress ? await this.compress(serialized) : data
+    // Determine if compression is beneficial
+    const shouldCompress = originalSize > this.compressionThreshold && this.compressionEnabled
+    let finalData = data
+    let compressionRatio = 1
+    
+    if (shouldCompress) {
+      const compressed = await this.compress(serialized)
+      const compressedSize = compressed.length
+      compressionRatio = originalSize / compressedSize
+      
+      // Only use compression if it saves significant space (>15% reduction)
+      if (compressionRatio > 1.15) {
+        finalData = compressed
+        this.updateCompressionStats(originalSize, compressedSize)
+        console.log(`🗜️ Compressed "${key}": ${this.formatBytes(originalSize)} → ${this.formatBytes(compressedSize)} (${Math.round((1 - compressionRatio) * -100)}%)`)
+      } else {
+        // Compression not beneficial, use original data
+        shouldCompress = false
+        finalData = data
+      }
+    }
 
     try {
       const cacheEntry = {
@@ -86,7 +114,9 @@ export class CacheManager {
         compressed: shouldCompress,
         accessCount: 1,
         lastAccessed: Date.now(),
-        size: JSON.stringify(finalData).length
+        size: JSON.stringify(finalData).length,
+        originalSize: originalSize,
+        compressionRatio: shouldCompress ? compressionRatio : 1
       }
 
       const serializedEntry = JSON.stringify(cacheEntry)
@@ -98,7 +128,8 @@ export class CacheManager {
       }
 
       localStorage.setItem(fullKey, serializedEntry)
-      console.log(`💾 Cached "${key}" (${category}) - ${serializedEntry.length} bytes${shouldCompress ? ' (compressed)' : ''}`)
+      const compressionInfo = shouldCompress ? ` (LZ-compressed: ${Math.round((1 - compressionRatio) * -100)}% reduction)` : ''
+      console.log(`💾 Cached "${key}" (${category}) - ${this.formatBytes(serializedEntry.length)}${compressionInfo}`)
       return true
 
     } catch (error) {
@@ -206,8 +237,8 @@ export class CacheManager {
         const accessCount = item.accessCount || 0
         const size = item.size || fullKey.length + JSON.stringify(item).length
 
-        // Higher score = more valuable, less likely to evict
-        const score = priority * 1000 - (age / 1000) + (accessCount * 10)
+        // Use advanced ML-based scoring
+        const score = this.calculateAdvancedCacheScore(item, key)
 
         cacheScores.push({
           key: fullKey,
@@ -257,13 +288,14 @@ export class CacheManager {
   }
 
   /**
-   * Get priority score for cache key
+   * Get priority score for cache key using ML-based scoring
    * @param {string} key - Cache key
    * @param {string} category - Cache category
+   * @param {Object} cacheEntry - Cache entry data
    * @returns {number} Priority score (higher = more important)
    */
-  getPriority(key, category) {
-    // Category-based priority
+  getPriority(key, category, cacheEntry = null) {
+    // Base category priority
     const categoryPriority = {
       departments: 10,      // Critical - department info
       preferences: 9,       // High - user settings
@@ -271,12 +303,137 @@ export class CacheManager {
       default: 5           // Default
     }
 
-    // Key-based priority adjustments
-    let keyPriority = 0
-    if (key.includes('main') || key.includes('academic')) keyPriority += 2
-    if (key.includes('user:') || key.includes('active-')) keyPriority += 1
+    let baseScore = categoryPriority[category] || categoryPriority.default
 
-    return (categoryPriority[category] || categoryPriority.default) + keyPriority
+    // Key-based priority adjustments
+    if (key.includes('main') || key.includes('academic')) baseScore += 2
+    if (key.includes('user:') || key.includes('active-')) baseScore += 1
+    if (key.includes('predictive:')) baseScore -= 1 // Lower priority for predictive loading
+
+    // ML-based scoring enhancements
+    if (cacheEntry) {
+      const mlScore = this.calculateMLScore(key, category, cacheEntry)
+      return baseScore + mlScore
+    }
+
+    return baseScore
+  }
+
+  /**
+   * Calculate ML-based priority score
+   * @param {string} key - Cache key
+   * @param {string} category - Cache category  
+   * @param {Object} cacheEntry - Cache entry data
+   * @returns {number} ML score adjustment (-5 to +5)
+   */
+  calculateMLScore(key, category, cacheEntry) {
+    let score = 0
+    const now = Date.now()
+    
+    // Feature extraction
+    const features = {
+      // Recency features
+      age: (now - (cacheEntry.timestamp || 0)) / (1000 * 60 * 60), // Age in hours
+      lastAccessed: (now - (cacheEntry.lastAccessed || cacheEntry.timestamp || 0)) / (1000 * 60 * 60), // Hours since last access
+      
+      // Frequency features
+      accessCount: cacheEntry.accessCount || 0,
+      accessRate: (cacheEntry.accessCount || 0) / Math.max(1, (now - (cacheEntry.timestamp || now)) / (1000 * 60 * 60)), // Accesses per hour
+      
+      // Size features
+      size: cacheEntry.size || 0,
+      compressionRatio: cacheEntry.compressionRatio || 1,
+      originalSize: cacheEntry.originalSize || cacheEntry.size || 0,
+      
+      // Time-based features
+      hourOfDay: new Date().getHours(),
+      dayOfWeek: new Date().getDay(),
+      isWeekend: new Date().getDay() === 0 || new Date().getDay() === 6,
+      
+      // Content features
+      isPredictive: key.includes('predictive:'),
+      isUserSpecific: key.includes('user:'),
+      isDepartmentSpecific: key.includes('department:'),
+      isRSSContent: category === 'rssItems'
+    }
+    
+    // ML-inspired scoring model (simplified decision tree approach)
+    
+    // High-value indicators (positive score)
+    if (features.accessCount > 5) score += Math.min(2, Math.log(features.accessCount))
+    if (features.accessRate > 1) score += Math.min(1.5, features.accessRate)
+    if (features.lastAccessed < 1) score += 2 // Recently accessed
+    if (features.compressionRatio > 1.5) score += 0.5 // Good compression
+    if (features.isUserSpecific && !features.isPredictive) score += 1
+    
+    // Medium-value indicators
+    if (features.age < 6 && features.accessCount > 2) score += 1 // Recent and used
+    if (features.isDepartmentSpecific && features.accessCount > 3) score += 0.5
+    
+    // Time-based patterns (office hours preference)
+    if (features.hourOfDay >= 9 && features.hourOfDay <= 17 && !features.isWeekend) {
+      score += 0.3
+    }
+    
+    // Low-value indicators (negative score)
+    if (features.isPredictive && features.accessCount === 0) score -= 2
+    if (features.age > 24 && features.accessCount <= 1) score -= 1.5 // Old and unused
+    if (features.lastAccessed > 12) score -= 1 // Not accessed in 12 hours
+    if (features.size > 100000 && features.accessCount <= 2) score -= 1 // Large but unused
+    
+    // Penalize very old predictive content
+    if (features.isPredictive && features.age > 6) score -= Math.min(2, features.age / 6)
+    
+    // Bonus for weekend content on weekends (news might be more relevant)
+    if (features.isRSSContent && features.isWeekend) score += 0.2
+    
+    // Clamp score to reasonable range
+    return Math.max(-5, Math.min(5, score))
+  }
+
+  /**
+   * Advanced cache scoring with machine learning features
+   * @param {Object} cacheEntry - Cache entry
+   * @param {string} key - Cache key
+   * @returns {number} Advanced cache score
+   */
+  calculateAdvancedCacheScore(cacheEntry, key) {
+    const age = Date.now() - (cacheEntry.lastAccessed || cacheEntry.timestamp || 0)
+    const priority = this.getPriority(key, cacheEntry.category, cacheEntry)
+    const accessCount = cacheEntry.accessCount || 0
+    const size = cacheEntry.size || 0
+    
+    // Multi-factor scoring algorithm
+    let score = priority * 1000 // Base priority weight
+    
+    // Recency factor (exponential decay)
+    const recencyWeight = Math.exp(-age / (24 * 60 * 60 * 1000)) // 24 hour half-life
+    score += recencyWeight * 500
+    
+    // Frequency factor (log scale)
+    if (accessCount > 0) {
+      score += Math.log(accessCount) * 100
+    }
+    
+    // Size penalty (larger items are more expensive to keep)
+    score -= Math.sqrt(size) * 0.1
+    
+    // Compression bonus
+    if (cacheEntry.compressionRatio > 1) {
+      score += cacheEntry.compressionRatio * 50
+    }
+    
+    // Predictive loading penalty
+    if (key.includes('predictive:') && accessCount === 0) {
+      score -= 200
+    }
+    
+    // User-specific bonus
+    if (key.includes('user:')) {
+      score += 150
+    }
+    
+    return score
   }
 
   /**
@@ -355,7 +512,16 @@ export class CacheManager {
     return {
       ...stats,
       formattedSize: this.formatBytes(stats.totalSize),
-      utilizationPercent: Math.round((stats.totalSize / this.maxStorageSize) * 100)
+      utilizationPercent: Math.round((stats.totalSize / this.maxStorageSize) * 100),
+      compression: {
+        enabled: this.compressionEnabled,
+        threshold: this.formatBytes(this.compressionThreshold),
+        ...this.compressionStats,
+        totalSavings: this.compressionStats.totalBytesOriginal - this.compressionStats.totalBytesCompressed,
+        totalSavingsFormatted: this.formatBytes(this.compressionStats.totalBytesOriginal - this.compressionStats.totalBytesCompressed),
+        averageCompressionPercent: this.compressionStats.averageCompressionRatio > 0 ? 
+          Math.round((1 - (1 / this.compressionStats.averageCompressionRatio)) * 100) : 0
+      }
     }
   }
 
@@ -364,37 +530,92 @@ export class CacheManager {
    * @returns {boolean} Whether compression is available
    */
   checkCompressionSupport() {
-    // For now, we'll implement simple JSON minification
-    // In the future, we could add LZ-string or similar
-    return true
+    try {
+      // Test LZ-string compression
+      const testString = 'test compression'
+      const compressed = LZString.compress(testString)
+      const decompressed = LZString.decompress(compressed)
+      return decompressed === testString
+    } catch (error) {
+      console.warn('⚠️ LZ-string compression not available:', error)
+      return false
+    }
   }
 
   /**
-   * Compress data (placeholder for future implementation)
+   * Compress data using LZ-string algorithm
    * @param {string} data - Data to compress
    * @returns {string} Compressed data
    */
   async compress(data) {
-    // Simple minification by removing unnecessary whitespace
     try {
-      const parsed = JSON.parse(data)
-      return JSON.stringify(parsed) // This removes formatting whitespace
-    } catch {
-      return data // Return as-is if not JSON
+      if (!this.compressionEnabled) {
+        return data
+      }
+      
+      // Use LZ-string compression for optimal space savings
+      const compressed = LZString.compress(data)
+      
+      if (!compressed) {
+        console.warn('⚠️ LZ-string compression failed, using original data')
+        return data
+      }
+      
+      return compressed
+    } catch (error) {
+      console.warn('⚠️ Compression error:', error)
+      return data // Return original data on compression failure
     }
   }
 
   /**
-   * Decompress data (placeholder for future implementation)
+   * Decompress data using LZ-string algorithm
    * @param {string} data - Compressed data
+   * @param {boolean} isCompressed - Whether data is actually compressed
    * @returns {*} Decompressed data
    */
-  async decompress(data) {
+  async decompress(data, isCompressed = false) {
     try {
-      return JSON.parse(data)
-    } catch {
-      return data // Return as-is if not JSON
+      if (!isCompressed || !this.compressionEnabled) {
+        // Data is not compressed, return as parsed JSON
+        return typeof data === 'string' ? JSON.parse(data) : data
+      }
+      
+      // Decompress using LZ-string
+      const decompressed = LZString.decompress(data)
+      
+      if (decompressed === null) {
+        console.warn('⚠️ LZ-string decompression failed')
+        // Try to parse as regular JSON fallback
+        return typeof data === 'string' ? JSON.parse(data) : data
+      }
+      
+      // Parse the decompressed JSON
+      return JSON.parse(decompressed)
+    } catch (error) {
+      console.warn('⚠️ Decompression error:', error)
+      // Fallback: try to use data as-is
+      try {
+        return typeof data === 'string' ? JSON.parse(data) : data
+      } catch {
+        return data
+      }
     }
+  }
+
+  /**
+   * Update compression statistics
+   * @param {number} originalSize - Original data size
+   * @param {number} compressedSize - Compressed data size
+   */
+  updateCompressionStats(originalSize, compressedSize) {
+    this.compressionStats.totalCompressions++
+    this.compressionStats.totalBytesOriginal += originalSize
+    this.compressionStats.totalBytesCompressed += compressedSize
+    
+    // Calculate running average compression ratio
+    this.compressionStats.averageCompressionRatio = 
+      this.compressionStats.totalBytesOriginal / this.compressionStats.totalBytesCompressed
   }
 
   /**
