@@ -6,6 +6,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { apiService } from '../services/apiService.js'
 import { RehydrationManager } from '../services/rehydrationManager.js'
+import { SyncCoordinator } from '../services/syncCoordinator.js'
 import { cacheManager } from '../services/cacheManager.js'
 
 // Shared state for departments across components
@@ -15,8 +16,9 @@ const error = ref(null)
 const lastFetch = ref(null)
 const isInitialized = ref(false)
 
-// Initialize rehydration manager
+// Initialize managers
 const rehydrationManager = new RehydrationManager(apiService)
+const syncCoordinator = new SyncCoordinator(apiService, rehydrationManager)
 
 /**
  * Main departments composable
@@ -194,38 +196,67 @@ export function useDepartments() {
   }
 
   /**
-   * Preload critical departments for faster access
+   * Preload critical departments for faster access using SyncCoordinator
    * @returns {Promise<void>}
    */
   async function preloadCriticalDepartments() {
     const criticalDepartmentIds = ['main', 'academic'] // High-priority departments
     console.log('📋 Preloading critical departments:', criticalDepartmentIds.join(', '))
     
-    const preloadPromises = criticalDepartmentIds.map(async (departmentId) => {
-      try {
-        await getDepartment(departmentId, true)
-        console.log(`📋 Preloaded: ${departmentId}`)
-      } catch (error) {
-        console.warn(`📋 Preload failed for ${departmentId}:`, error.message)
-      }
-    })
-
-    await Promise.allSettled(preloadPromises)
-    console.log('📋 Critical departments preloading completed')
+    // Queue critical departments with high priority
+    for (const departmentId of criticalDepartmentIds) {
+      syncCoordinator.queueSync({
+        key: `department:${departmentId}`,
+        category: 'departments',
+        fetchFn: () => apiService.getDepartment(departmentId),
+        metadata: { departmentId, preload: true }
+      }, 'high')
+    }
+    
+    console.log('📋 Critical departments queued for preloading')
   }
 
   /**
-   * Get cache statistics for departments
+   * Sync departments using SyncCoordinator
+   * @param {Array<string>} departmentIds - Specific departments to sync, or all if empty
+   * @param {string} priority - Sync priority level
+   */
+  async function syncDepartments(departmentIds = [], priority = 'medium') {
+    if (departmentIds.length > 0) {
+      // Sync specific departments
+      await syncCoordinator.syncActiveDepartments(departmentIds)
+    } else {
+      // Sync all departments
+      syncCoordinator.queueSync({
+        key: 'departments:all',
+        category: 'departments', 
+        fetchFn: () => apiService.getDepartments(),
+        metadata: { syncAll: true }
+      }, priority)
+    }
+  }
+
+  /**
+   * Get cache statistics for departments including sync coordinator
    * @returns {Object} Cache statistics
    */
   function getDepartmentCacheStats() {
     return {
       cacheManager: cacheManager.getStats(),
       rehydrationManager: rehydrationManager.getStats(),
+      syncCoordinator: syncCoordinator.getStats(),
       departmentsLoaded: departments.value.length,
       isInitialized: isInitialized.value,
       lastFetch: lastFetch.value
     }
+  }
+
+  /**
+   * Get sync coordinator instance for debugging
+   * @returns {SyncCoordinator} Sync coordinator instance
+   */
+  function getSyncCoordinator() {
+    return syncCoordinator
   }
 
   // Computed properties
@@ -276,7 +307,9 @@ export function useDepartments() {
     getDefaultDepartments,
     getDefaultDepartmentObjects,
     preloadCriticalDepartments,
-    getDepartmentCacheStats
+    syncDepartments,
+    getDepartmentCacheStats,
+    getSyncCoordinator
   }
 }
 

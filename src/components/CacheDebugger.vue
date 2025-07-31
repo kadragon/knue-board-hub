@@ -35,6 +35,39 @@
         </div>
       </div>
 
+      <!-- Sync Coordinator Status -->
+      <div class="sync-section">
+        <h4>🔄 Sync Coordinator</h4>
+        <div class="sync-stats">
+          <div class="sync-item">
+            <span class="sync-label">Network:</span>
+            <span class="sync-value" :class="{ 'online': syncStats.networkState?.isOnline, 'offline': !syncStats.networkState?.isOnline }">
+              {{ syncStats.networkState?.isOnline ? '🟢 Online' : '🔴 Offline' }} ({{ syncStats.networkState?.quality }})
+            </span>
+          </div>
+          <div class="sync-item">
+            <span class="sync-label">Syncing:</span>
+            <span class="sync-value">{{ syncStats.syncState?.isSyncing ? '🔄 Active' : '⏸️ Idle' }}</span>
+          </div>
+          <div class="sync-item">
+            <span class="sync-label">Queued:</span>
+            <span class="sync-value">{{ syncStats.syncState?.totalQueued || 0 }}</span>
+          </div>
+          <div class="sync-item">
+            <span class="sync-label">Success Rate:</span>
+            <span class="sync-value">{{ syncStats.performance?.successRate || 100 }}%</span>
+          </div>
+        </div>
+        
+        <div class="sync-queues">
+          <h5>Priority Queues:</h5>
+          <div v-for="(count, priority) in syncStats.queues" :key="priority" class="queue-item">
+            <span class="queue-name" :class="`priority-${priority}`">{{ priority }}:</span>
+            <span class="queue-count">{{ count }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Department Cache Status -->
       <div class="departments-section">
         <h4>📋 Departments Cache</h4>
@@ -153,10 +186,11 @@ const cacheStats = ref({})
 const departmentStats = ref({})
 const rssStats = ref({})
 const rehydrationStats = ref({})
+const syncStats = ref({})
 const performanceResults = ref(null)
 const logs = ref([])
 
-const { getDepartmentCacheStats } = useDepartments()
+const { getDepartmentCacheStats, getSyncCoordinator } = useDepartments()
 const { getRssCacheStats } = useRssFeed()
 const { getCacheStats, clearCache: clearCacheManager } = useCache()
 
@@ -179,6 +213,12 @@ const refreshStats = async () => {
     
     // Get rehydration statistics
     rehydrationStats.value = rssStats.value.rehydrationManager || {}
+    
+    // Get sync coordinator statistics
+    const syncCoordinator = getSyncCoordinator()
+    if (syncCoordinator) {
+      syncStats.value = syncCoordinator.getStats()
+    }
     
     addLog('📊 Statistics refreshed', 'info')
   } catch (error) {
@@ -508,5 +548,80 @@ onUnmounted(() => {
 
 .log-message {
   flex: 1;
+}
+
+/* Sync Coordinator Styles */
+.sync-section {
+  margin-bottom: 16px;
+  padding: 8px;
+  border: 1px solid #333;
+  border-radius: 4px;
+}
+
+.sync-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sync-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.sync-label {
+  color: #ccc;
+}
+
+.sync-value {
+  font-weight: bold;
+  color: #4ade80;
+}
+
+.sync-value.online {
+  color: #4ade80;
+}
+
+.sync-value.offline {
+  color: #f87171;
+}
+
+.sync-queues {
+  margin-top: 8px;
+}
+
+.queue-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  font-size: 11px;
+}
+
+.queue-name {
+  text-transform: capitalize;
+  font-weight: bold;
+}
+
+.queue-name.priority-critical {
+  color: #f87171;
+}
+
+.queue-name.priority-high {
+  color: #fb923c;
+}
+
+.queue-name.priority-medium {
+  color: #60a5fa;
+}
+
+.queue-name.priority-low {
+  color: #6b7280;
+}
+
+.queue-count {
+  color: #4ade80;
+  font-weight: bold;
 }
 </style>
