@@ -114,20 +114,6 @@
           </div>
           
           <div class="settings-list">
-            <div class="setting-item">
-              <div class="setting-info">
-                <h3 class="setting-title">테마</h3>
-                <p class="setting-description">앱의 색상 테마를 선택하세요</p>
-              </div>
-              <select
-                v-model="settings.theme"
-                class="setting-select"
-              >
-                <option value="auto">시스템 설정</option>
-                <option value="light">밝은 테마</option>
-                <option value="dark">어두운 테마</option>
-              </select>
-            </div>
 
             <div class="setting-item">
               <div class="setting-info">
@@ -322,7 +308,6 @@ const settings = reactive({
   infiniteScroll: true,
   
   // Display
-  theme: 'auto',
   fontSize: 2, // 0-4 scale
   compactMode: false,
   
@@ -451,7 +436,6 @@ async function resetSettings() {
       showDescriptions: true,
       groupByDate: false,
       infiniteScroll: true,
-      theme: 'auto',
       fontSize: 2,
       compactMode: false,
       notifications: {
@@ -502,23 +486,8 @@ function loadSettings() {
 }
 
 function applyThemeSettings() {
-  // Apply theme
-  const html = document.documentElement
-  
-  if (settings.theme === 'dark') {
-    html.classList.add('dark')
-  } else if (settings.theme === 'light') {
-    html.classList.remove('dark')
-  } else {
-    // Auto - follow system preference
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      html.classList.add('dark')
-    } else {
-      html.classList.remove('dark')
-    }
-  }
-  
   // Apply font size
+  const html = document.documentElement
   const fontSizeScale = [0.875, 0.9375, 1, 1.0625, 1.125] // rem multipliers
   html.style.fontSize = `${fontSizeScale[settings.fontSize]}rem`
 }
@@ -856,53 +825,4 @@ defineOptions({
   }
 }
 
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-  .settings-view {
-    background: theme('colors.gray.900');
-  }
-  
-  .view-title {
-    color: theme('colors.gray.100');
-  }
-  
-  .view-description {
-    color: theme('colors.gray.400');
-  }
-  
-  .section-title {
-    color: theme('colors.gray.100');
-  }
-  
-  .settings-section {
-    background: theme('colors.gray.800');
-  }
-  
-  .setting-item {
-    border-color: theme('colors.gray.700');
-  }
-  
-  .sub-setting {
-    background: theme('colors.gray.700');
-  }
-  
-  .setting-title {
-    color: theme('colors.gray.100');
-  }
-  
-  .setting-description {
-    color: theme('colors.gray.400');
-  }
-  
-  .setting-select,
-  .font-size-btn {
-    background: theme('colors.gray.700');
-    border-color: theme('colors.gray.600');
-    color: theme('colors.gray.200');
-  }
-  
-  .font-size-value {
-    color: theme('colors.gray.200');
-  }
-}
 </style>

@@ -179,27 +179,4 @@ defineOptions({
   }
 }
 
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-  .not-found-view {
-    background: theme('colors.gray.900');
-  }
-  
-  .title {
-    color: theme('colors.gray.100');
-  }
-  
-  .description {
-    color: theme('colors.gray.400');
-  }
-  
-  .action-btn.secondary {
-    background: theme('colors.gray.700');
-    color: theme('colors.gray.200');
-  }
-  
-  .action-btn.secondary:hover {
-    background: theme('colors.gray.600');
-  }
-}
 </style>

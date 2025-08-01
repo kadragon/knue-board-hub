@@ -323,18 +323,4 @@ const sizeValue = computed(() => {
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .loading-overlay {
-    background-color: rgba(0, 0, 0, 0.8);
-  }
-  
-  .progress-bar {
-    background-color: theme('colors.gray.700');
-  }
-  
-  .progress-text {
-    color: theme('colors.gray.400');
-  }
-}
 </style>

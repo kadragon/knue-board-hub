@@ -183,7 +183,7 @@ export default defineConfig({
 
     // Card shortcuts (STYLE.md aligned + enhanced separation)
     "card-base":
-      "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-300 dark:border-gray-600",
+      "bg-white rounded-xl shadow-sm border border-gray-300",
     "card-hover":
       "hover:shadow-lg hover:border-knue-primary/30 hover:-translate-y-1 transition-all duration-250 ease-out",
     "card-touch": "active:scale-98 touch-manipulation",
@@ -202,10 +202,10 @@ export default defineConfig({
     // Text shortcuts (STYLE.md aligned)
     "text-headline": "text-2xl font-bold text-knue-primary leading-tight",
     "text-title": "text-lg font-semibold text-knue-primary leading-normal",
-    "text-subtitle": "text-base font-medium text-gray-700 dark:text-gray-300 leading-normal",
-    "text-body": "text-base text-gray-600 dark:text-gray-400 leading-normal",
-    "text-caption": "text-sm text-gray-500 dark:text-gray-500 leading-normal",
-    "text-small": "text-xs text-gray-500 dark:text-gray-500",
+    "text-subtitle": "text-base font-medium text-gray-700 leading-normal",
+    "text-body": "text-base text-gray-600 leading-normal",
+    "text-caption": "text-sm text-gray-500 leading-normal",
+    "text-small": "text-xs text-gray-500",
     "text-link":
       "text-knue-primary hover:text-knue-secondary underline-offset-2",
 
@@ -213,22 +213,22 @@ export default defineConfig({
     "badge-department":
       "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
     "badge-main":
-      "badge-department bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+      "badge-department bg-blue-100 text-blue-800",
     "badge-academic":
-      "badge-department bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      "badge-department bg-green-100 text-green-800",
     "badge-employment":
-      "badge-department bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300",
+      "badge-department bg-cyan-100 text-cyan-800",
     "badge-scholarship":
-      "badge-department bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+      "badge-department bg-yellow-100 text-yellow-800",
     "badge-event":
-      "badge-department bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300",
+      "badge-department bg-pink-100 text-pink-800",
     "badge-research":
-      "badge-department bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+      "badge-department bg-purple-100 text-purple-800",
     "badge-library":
-      "badge-department bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+      "badge-department bg-orange-100 text-orange-800",
 
     // Loading states (STYLE.md aligned)
-    skeleton: "animate-pulse bg-gray-200 dark:bg-gray-700 rounded",
+    skeleton: "animate-pulse bg-gray-200 rounded",
     "skeleton-text": "skeleton h-4 w-full mb-2",
     "skeleton-title": "skeleton h-6 w-3/4 mb-3",
     "skeleton-subtitle": "skeleton h-4 w-1/2 mb-2",
@@ -238,7 +238,7 @@ export default defineConfig({
 
     // Touch feedback
     "touch-feedback":
-      "active:bg-gray-50 dark:active:bg-gray-800 active:scale-98 transition-all duration-150",
+      "active:bg-gray-50 active:scale-98 transition-all duration-150",
     "ripple-effect":
       "relative overflow-hidden before:absolute before:inset-0 before:bg-current before:opacity-0 before:scale-0 active:before:opacity-10 active:before:scale-100 before:transition-all before:duration-300",
 
@@ -305,14 +305,6 @@ export default defineConfig({
       };
     },
 
-    // Dark mode support (class-based)
-    (matcher) => {
-      if (!matcher.startsWith("dark:")) return matcher;
-      return {
-        matcher: matcher.slice(5),
-        selector: (s) => `.dark ${s}`,
-      };
-    },
   ],
   safelist: [
     // Department colors

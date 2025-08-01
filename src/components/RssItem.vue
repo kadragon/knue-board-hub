@@ -59,7 +59,7 @@
         <button
           v-if="canShare"
           @click.stop="handleShare"
-          class="inline-flex items-center justify-center w-8 h-8 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-knue-accent"
+          class="inline-flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-knue-accent"
           aria-label="게시글 공유하기"
           type="button"
         >
@@ -73,7 +73,7 @@
           :class="[
             isBookmarked
               ? 'text-knue-accent hover:text-yellow-600'
-              : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+              : 'text-gray-400 hover:text-gray-600'
           ]"
           :aria-label="isBookmarked ? '북마크에서 제거' : '북마크에 추가'"
           :aria-pressed="isBookmarked"
@@ -87,7 +87,7 @@
         </button>
 
         <!-- External Link Icon -->
-        <i class="i-tabler-external-link w-5 h-5 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+        <i class="i-tabler-external-link w-5 h-5 text-gray-400" aria-hidden="true" />
       </div>
     </div>
 

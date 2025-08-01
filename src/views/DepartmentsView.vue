@@ -99,6 +99,121 @@
           </div>
         </div>
 
+        <!-- Keyword Filter Section -->
+        <div class="keyword-filter-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <i class="i-tabler-filter w-5 h-5 mr-2" />
+              키워드 필터링
+            </h2>
+            <p class="section-description">
+              특정 키워드가 포함된 게시글을 숨길 수 있습니다
+            </p>
+          </div>
+          
+          <div class="keyword-filter-content">
+            <!-- Add Keyword Input -->
+            <div class="add-keyword-section">
+              <div class="keyword-input-wrapper">
+                <input
+                  v-model="newKeyword"
+                  @keyup.enter="addKeyword"
+                  type="text"
+                  placeholder="차단할 키워드 입력..."
+                  class="keyword-input"
+                  :disabled="isAddingKeyword"
+                />
+                <button
+                  @click="addKeyword"
+                  :disabled="!newKeyword.trim() || isAddingKeyword"
+                  class="add-keyword-btn"
+                >
+                  <i class="i-tabler-plus w-4 h-4" />
+                  추가
+                </button>
+              </div>
+            </div>
+
+            <!-- Blocked Keywords List -->
+            <div v-if="blockedKeywords.length > 0" class="blocked-keywords-section">
+              <div class="keywords-header">
+                <span class="keywords-count">
+                  {{ blockedKeywords.length }}개 키워드 차단 중
+                </span>
+                <button
+                  @click="clearAllKeywords"
+                  class="clear-all-btn"
+                  :disabled="isClearingAll"
+                >
+                  <i class="i-tabler-trash w-4 h-4 mr-1" />
+                  전체 삭제
+                </button>
+              </div>
+              
+              <div class="keywords-list">
+                <div
+                  v-for="keyword in blockedKeywords"
+                  :key="keyword"
+                  class="keyword-tag"
+                >
+                  <span class="keyword-text">{{ keyword }}</span>
+                  <button
+                    @click="removeKeyword(keyword)"
+                    class="remove-keyword-btn"
+                    :disabled="removingKeywords.has(keyword)"
+                  >
+                    <i class="i-tabler-x w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else class="no-keywords-state">
+              <i class="i-tabler-filter-off w-12 h-12 text-gray-400 mb-2" />
+              <p class="no-keywords-text">
+                차단된 키워드가 없습니다
+              </p>
+              <p class="no-keywords-description">
+                원하지 않는 게시글을 숨기려면 키워드를 추가하세요
+              </p>
+            </div>
+
+            <!-- Import/Export -->
+            <div class="keyword-actions">
+              <button
+                @click="showImportModal = true"
+                class="action-btn secondary"
+              >
+                <i class="i-tabler-upload w-4 h-4 mr-1" />
+                가져오기
+              </button>
+              <button
+                @click="exportKeywords"
+                :disabled="blockedKeywords.length === 0"
+                class="action-btn secondary"
+              >
+                <i class="i-tabler-download w-4 h-4 mr-1" />
+                내보내기
+              </button>
+            </div>
+
+            <!-- Filter Statistics -->
+            <div v-if="hasBlockedKeywords && filterStats" class="filter-stats">
+              <div class="stats-row">
+                <div class="stat-item">
+                  <span class="stat-value">{{ filterStats.blockedCount }}</span>
+                  <span class="stat-label">차단된 게시글</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">{{ filterStats.blockPercentage }}%</span>
+                  <span class="stat-label">차단 비율</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Statistics Section -->
         <div v-if="showStats" class="stats-section">
           <div class="section-header">
@@ -132,6 +247,44 @@
         </div>
       </main>
     </div>
+
+    <!-- Import Keywords Modal -->
+    <div v-if="showImportModal" class="modal-overlay" @click.self="showImportModal = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">키워드 가져오기</h3>
+          <button @click="showImportModal = false" class="modal-close">
+            <i class="i-tabler-x w-5 h-5" />
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <p class="import-description">
+            키워드를 한 줄에 하나씩 입력하거나 쉼표로 구분해서 입력하세요.
+          </p>
+          <textarea
+            v-model="importText"
+            placeholder="키워드1&#10;키워드2&#10;키워드3"
+            class="import-textarea"
+            rows="6"
+          ></textarea>
+        </div>
+        
+        <div class="modal-footer">
+          <button @click="showImportModal = false" class="btn-secondary">
+            취소
+          </button>
+          <button 
+            @click="importKeywords" 
+            :disabled="!importText.trim() || isImporting"
+            class="btn-primary"
+          >
+            <i v-if="isImporting" class="i-tabler-loader-2 w-4 h-4 animate-spin mr-1" />
+            {{ isImporting ? '가져오는 중...' : '가져오기' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -142,13 +295,14 @@ import DepartmentSelector from '../components/DepartmentSelector.vue'
 import { useGlobalNotifications } from '../composables/useNotifications.js'
 import { useRssFeed } from '../composables/useRssFeed.js'
 import { useDepartments } from '../composables/useDepartments.js'
+import { useKeywordFilter } from '../composables/useKeywordFilter.js'
 import { formatDateForMobile, isToday } from '../utils/dateUtils.js'
 
 // Router
 const router = useRouter()
 
 // Composables
-const { showSuccess, showInfo } = useGlobalNotifications()
+const { showSuccess, showInfo, showError } = useGlobalNotifications()
 const {
   allItems,
   loading,
@@ -160,10 +314,29 @@ const {
 } = useRssFeed()
 
 const { getDefaultDepartments, getDepartment } = useDepartments()
+const {
+  blockedKeywords,
+  hasBlockedKeywords,
+  addBlockedKeyword,
+  removeBlockedKeyword,
+  clearBlockedKeywords,
+  getFilterStats,
+  importKeywords: importKeywordsFromText,
+  exportKeywords: exportKeywordsToText
+} = useKeywordFilter()
 
 // State
 const selectedDepartments = ref([])
 const showStats = ref(true)
+
+// Keyword filter state
+const newKeyword = ref('')
+const isAddingKeyword = ref(false)
+const isClearingAll = ref(false)
+const removingKeywords = ref(new Set())
+const showImportModal = ref(false)
+const importText = ref('')
+const isImporting = ref(false)
 
 // Presets - Updated to match actual database department IDs
 const presets = {
@@ -209,6 +382,12 @@ const todayPosts = computed(() =>
 )
 
 const lastUpdateTime = computed(() => lastUpdate.value)
+
+// Keyword filter computed
+const filterStats = computed(() => {
+  if (!hasBlockedKeywords.value || allItems.value.length === 0) return null
+  return getFilterStats(allItems.value, allItems.value) // We'll filter in RssFeedList
+})
 
 // Methods
 function handleSelectionChange({ selected, count }) {
@@ -278,6 +457,116 @@ function isPresetActive(presetName) {
 
 function formatLastUpdate(date) {
   return date ? formatDateForMobile(date) : '정보 없음'
+}
+
+// Keyword filter methods
+async function addKeyword() {
+  if (!newKeyword.value.trim() || isAddingKeyword.value) return
+  
+  isAddingKeyword.value = true
+  
+  try {
+    const keyword = newKeyword.value.trim()
+    const wasAdded = addBlockedKeyword(keyword)
+    
+    if (wasAdded) {
+      showSuccess(`"${keyword}" 키워드가 차단 목록에 추가되었습니다`)
+      newKeyword.value = ''
+    } else {
+      showInfo('이미 차단 목록에 있는 키워드입니다')
+    }
+  } catch (error) {
+    showError('키워드 추가 중 오류가 발생했습니다')
+  } finally {
+    isAddingKeyword.value = false
+  }
+}
+
+async function removeKeyword(keyword) {
+  if (removingKeywords.value.has(keyword)) return
+  
+  removingKeywords.value.add(keyword)
+  
+  try {
+    const wasRemoved = removeBlockedKeyword(keyword)
+    
+    if (wasRemoved) {
+      showSuccess(`"${keyword}" 키워드가 차단 목록에서 제거되었습니다`)
+    }
+  } catch (error) {
+    showError('키워드 제거 중 오류가 발생했습니다')
+  } finally {
+    removingKeywords.value.delete(keyword)
+  }
+}
+
+async function clearAllKeywords() {
+  if (isClearingAll.value) return
+  
+  isClearingAll.value = true
+  
+  try {
+    const wasCleared = clearBlockedKeywords()
+    
+    if (wasCleared) {
+      showSuccess('모든 차단 키워드가 삭제되었습니다')
+    }
+  } catch (error) {
+    showError('키워드 삭제 중 오류가 발생했습니다')
+  } finally {
+    isClearingAll.value = false
+  }
+}
+
+async function importKeywords() {
+  if (!importText.value.trim() || isImporting.value) return
+  
+  isImporting.value = true
+  
+  try {
+    const addedCount = importKeywordsFromText(importText.value)
+    
+    if (addedCount > 0) {
+      showSuccess(`${addedCount}개의 키워드를 가져왔습니다`)
+      importText.value = ''
+      showImportModal.value = false
+    } else {
+      showInfo('가져올 새로운 키워드가 없습니다')
+    }
+  } catch (error) {
+    showError('키워드 가져오기 중 오류가 발생했습니다')
+  } finally {
+    isImporting.value = false
+  }
+}
+
+function exportKeywords() {
+  try {
+    const keywordText = exportKeywordsToText()
+    
+    if (keywordText) {
+      // Copy to clipboard
+      navigator.clipboard.writeText(keywordText).then(() => {
+        showSuccess('키워드 목록이 클립보드에 복사되었습니다')
+      }).catch(() => {
+        // Fallback: Create download link
+        const blob = new Blob([keywordText], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'blocked-keywords.txt'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        showSuccess('키워드 목록이 다운로드되었습니다')
+      })
+    } else {
+      showInfo('내보낼 키워드가 없습니다')
+    }
+  } catch (error) {
+    showError('키워드 내보내기 중 오류가 발생했습니다')  
+  }
 }
 
 // Lifecycle
@@ -367,6 +656,13 @@ defineOptions({
   font-weight: 600;
   color: theme('colors.gray.900');
   margin: 0;
+}
+
+.section-description {
+  font-size: 0.875rem;
+  color: theme('colors.gray.600');
+  margin: 0.5rem 0 0 0;
+  line-height: 1.4;
 }
 
 /* Quick Actions */
@@ -475,6 +771,405 @@ defineOptions({
   font-weight: 500;
 }
 
+/* Keyword Filter Section */
+.keyword-filter-section {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.keyword-filter-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Add Keyword */
+.keyword-input-wrapper {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.keyword-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid theme('colors.gray.300');
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  background: white;
+  color: theme('colors.gray.900');
+  transition: all 0.2s ease;
+}
+
+.keyword-input:focus {
+  outline: none;
+  border-color: theme('colors.knue.primary');
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.keyword-input:disabled {
+  background: theme('colors.gray.100');
+  color: theme('colors.gray.500');
+  cursor: not-allowed;
+}
+
+.add-keyword-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: theme('colors.knue.primary');
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.add-keyword-btn:hover:not(:disabled) {
+  background: theme('colors.blue.700');
+  transform: translateY(-1px);
+}
+
+.add-keyword-btn:disabled {
+  background: theme('colors.gray.400');
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Blocked Keywords */
+.blocked-keywords-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.keywords-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid theme('colors.gray.200');
+}
+
+.keywords-count {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: theme('colors.gray.700');
+}
+
+.clear-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  background: theme('colors.red.50');
+  color: theme('colors.red.600');
+  border: 1px solid theme('colors.red.200');
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-all-btn:hover:not(:disabled) {
+  background: theme('colors.red.100');
+  border-color: theme('colors.red.300');
+}
+
+.clear-all-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.keywords-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.keyword-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: theme('colors.red.50');
+  border: 1px solid theme('colors.red.200');
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  color: theme('colors.red.700');
+}
+
+.keyword-text {
+  font-weight: 500;
+}
+
+.remove-keyword-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  background: theme('colors.red.100');
+  color: theme('colors.red.600');
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.remove-keyword-btn:hover:not(:disabled) {
+  background: theme('colors.red.200');
+  color: theme('colors.red.700');
+}
+
+.remove-keyword-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Empty State */
+.no-keywords-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem 1rem;
+  color: theme('colors.gray.500');
+}
+
+.no-keywords-text {
+  font-size: 1rem;
+  font-weight: 500;
+  color: theme('colors.gray.600');
+  margin: 0 0 0.5rem 0;
+}
+
+.no-keywords-description {
+  font-size: 0.875rem;
+  color: theme('colors.gray.500');
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Keyword Actions */
+.keyword-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid theme('colors.gray.200');
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid theme('colors.gray.300');
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.action-btn.secondary {
+  background: white;
+  color: theme('colors.gray.700');
+}
+
+.action-btn.secondary:hover:not(:disabled) {
+  background: theme('colors.gray.50');
+  border-color: theme('colors.gray.400');
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Filter Statistics */
+.filter-stats {
+  padding: 1rem;
+  background: theme('colors.blue.50');
+  border: 1px solid theme('colors.blue.200');
+  border-radius: 0.5rem;
+}
+
+.stats-row {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+}
+
+.filter-stats .stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.filter-stats .stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: theme('colors.blue.700');
+  margin-bottom: 0.125rem;
+}
+
+.filter-stats .stat-label {
+  font-size: 0.75rem;
+  color: theme('colors.blue.600');
+  font-weight: 500;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  max-width: 500px;
+  width: 100%;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid theme('colors.gray.200');
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: theme('colors.gray.900');
+  margin: 0;
+}
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: none;
+  border: none;
+  color: theme('colors.gray.500');
+  cursor: pointer;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: theme('colors.gray.100');
+  color: theme('colors.gray.700');
+}
+
+.modal-body {
+  padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.import-description {
+  font-size: 0.875rem;
+  color: theme('colors.gray.600');
+  margin: 0 0 1rem 0;
+  line-height: 1.4;
+}
+
+.import-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid theme('colors.gray.300');
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.import-textarea:focus {
+  outline: none;
+  border-color: theme('colors.knue.primary');
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1.5rem;
+  border-top: 1px solid theme('colors.gray.200');
+}
+
+.btn-secondary {
+  padding: 0.625rem 1.25rem;
+  background: white;
+  color: theme('colors.gray.700');
+  border: 1px solid theme('colors.gray.300');
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: theme('colors.gray.50');
+  border-color: theme('colors.gray.400');
+}
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.625rem 1.25rem;
+  background: theme('colors.knue.primary');
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: theme('colors.blue.700');
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .view-title {
@@ -520,58 +1215,4 @@ defineOptions({
   }
 }
 
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-  .departments-view {
-    background: theme('colors.gray.900');
-  }
-  
-  .view-title {
-    color: theme('colors.gray.100');
-  }
-  
-  .view-description {
-    color: theme('colors.gray.400');
-  }
-  
-  .section-title {
-    color: theme('colors.gray.100');
-  }
-  
-  .quick-actions-section,
-  .stats-section {
-    background: theme('colors.gray.800');
-  }
-  
-  .quick-action-card {
-    background: theme('colors.gray.700');
-    border-color: theme('colors.gray.600');
-  }
-  
-  .quick-action-card:hover,
-  .quick-action-card.active {
-    background: theme('colors.gray.600');
-  }
-  
-  .action-icon {
-    background: theme('colors.gray.600');
-  }
-  
-  .action-title {
-    color: theme('colors.gray.100');
-  }
-  
-  .action-description {
-    color: theme('colors.gray.400');
-  }
-  
-  .stat-card {
-    background: theme('colors.gray.700');
-    border-color: theme('colors.gray.600');
-  }
-  
-  .stat-label {
-    color: theme('colors.gray.400');
-  }
-}
 </style>

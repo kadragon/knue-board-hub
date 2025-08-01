@@ -356,20 +356,6 @@ const descriptionClass = computed(() => {
   }
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .empty-title {
-    color: theme('colors.gray.100');
-  }
-  
-  .empty-description {
-    color: theme('colors.gray.400');
-  }
-  
-  .empty-illustration::before {
-    background: linear-gradient(45deg, theme('colors.blue.900'), theme('colors.purple.900'));
-  }
-}
 
 /* Accessibility */
 .empty-state[role="status"] {
