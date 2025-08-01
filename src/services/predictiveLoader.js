@@ -169,7 +169,7 @@ export class PredictiveLoader {
    * Update sequence patterns (route transitions)
    * @param {string} currentRoute - Current route
    */
-  updateSequencePatterns(currentRoute) {
+  updateSequencePatterns() {
     const recentViews = this.userBehavior.pageViews.slice(-5) // Last 5 views
     
     if (recentViews.length >= 2) {
@@ -211,7 +211,6 @@ export class PredictiveLoader {
     }
     
     const predictions = []
-    const currentTime = Date.now()
     const currentHour = new Date().getHours()
     const currentDayOfWeek = new Date().getDay()
     const currentRoute = this.getCurrentRoute()
@@ -304,7 +303,7 @@ export class PredictiveLoader {
    * @param {string} currentRoute - Current route
    * @returns {Array} Sequence-based predictions
    */
-  generateSequenceBasedPredictions(currentRoute) {
+  generateSequenceBasedPredictions() {
     const predictions = []
     const recentRoutes = this.userBehavior.pageViews.slice(-3).map(view => view.route)
     
@@ -416,7 +415,7 @@ export class PredictiveLoader {
     
     // Combine predictions for same route/department
     const combined = []
-    for (const [key, preds] of grouped) {
+    for (const [, preds] of grouped) {
       if (preds.length === 1) {
         combined.push(preds[0])
       } else {
@@ -590,12 +589,13 @@ export class PredictiveLoader {
   }
 
   findSequenceMatch(recent, pattern) {
+    // Check if recent navigation is a prefix of the pattern
     for (let i = 0; i < Math.min(recent.length, pattern.length); i++) {
-      if (recent[recent.length - 1 - i] !== pattern[pattern.length - 1 - i]) {
-        return i
+      if (recent[i] !== pattern[i]) {
+        return i // Return length of matching prefix
       }
     }
-    return Math.min(recent.length, pattern.length)
+    return Math.min(recent.length, pattern.length) // All compared elements match
   }
 
   /**

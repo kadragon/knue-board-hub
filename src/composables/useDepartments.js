@@ -200,7 +200,7 @@ export function useDepartments() {
    * @returns {Promise<void>}
    */
   async function preloadCriticalDepartments() {
-    const criticalDepartmentIds = ['main', 'academic'] // High-priority departments
+    const criticalDepartmentIds = ['general', 'academic'] // High-priority departments
     console.log('📋 Preloading critical departments:', criticalDepartmentIds.join(', '))
     
     // Queue critical departments with high priority

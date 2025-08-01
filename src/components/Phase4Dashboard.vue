@@ -338,7 +338,6 @@ import { useDepartments } from '../composables/useDepartments.js'
 import { useCache } from '../services/cacheManager.js'
 import { usePerformanceMonitor } from '../services/performanceMonitor.js'
 import { useConflictResolver } from '../services/conflictResolver.js'
-import { usePredictiveLoader } from '../services/predictiveLoader.js'
 
 // Reactive data
 const performanceStats = ref({})
@@ -350,7 +349,7 @@ const overallHealth = ref('unknown')
 const recommendations = ref([])
 
 // Composables
-const { getSyncCoordinator, getDepartmentCacheStats } = useDepartments()
+const { getSyncCoordinator } = useDepartments()
 const { getCacheStats } = useCache()
 const { 
   performanceMonitor, 
@@ -426,8 +425,6 @@ const triggerCacheTest = async () => {
   
   // Simulate cache operations
   for (let i = 0; i < 10; i++) {
-    const startTime = performance.now()
-    
     // Simulate cache hit/miss
     const isHit = Math.random() > 0.3
     const responseTime = Math.random() * 200 + 50
@@ -449,7 +446,6 @@ const triggerSyncTest = async () => {
   
   // Simulate sync operations
   for (let i = 0; i < 5; i++) {
-    const startTime = performance.now()
     const duration = Math.random() * 2000 + 500
     const isSuccess = Math.random() > 0.2
     
@@ -512,8 +508,12 @@ const getMostUsedStrategy = () => {
   if (!conflictStats.value.strategiesUsed) return 'none'
   
   const strategies = conflictStats.value.strategiesUsed
-  const mostUsed = Object.keys(strategies).reduce((a, b) => 
-    strategies[a] > strategies[b] ? a : b, 'none'
+  const strategyKeys = Object.keys(strategies)
+  
+  if (strategyKeys.length === 0) return 'none'
+  
+  const mostUsed = strategyKeys.reduce((a, b) => 
+    strategies[a] > strategies[b] ? a : b
   )
   
   return mostUsed.replace('_', ' ')
