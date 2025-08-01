@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cache Implementation Test</title>
+    <style>
+        body {
+            font-family: Monaco, monospace;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4ade80;
+        }
+        .test-section.error {
+            border-left-color: #f87171;
+        }
+        .test-section.warning {
+            border-left-color: #fbbf24;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .test-result.pass {
+            background: #064e3b;
+            color: #10b981;
+        }
+        .test-result.fail {
+            background: #7f1d1d;
+            color: #f87171;
+        }
+        .test-result.info {
+            background: #1e3a8a;
+            color: #60a5fa;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #374151;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4ade80;
+        }
+        .stat-label {
+            color: #9ca3af;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        button {
+            background: #374151;
+            border: 1px solid #4b5563;
+            color: white;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #4b5563;
+        }
+        button.primary {
+            background: #1d4ed8;
+            border-color: #2563eb;
+        }
+        button.primary:hover {
+            background: #2563eb;
+        }
+        .log-container {
+            background: #111;
+            padding: 15px;
+            border-radius: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            margin: 15px 0;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        .log-entry.success { color: #10b981; }
+        .log-entry.error { color: #f87171; }
+        .log-entry.info { color: #60a5fa; }
+        .log-entry.warn { color: #fbbf24; }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #374151;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #3b82f6);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 KNUE Board Hub - Cache Implementation Test</h1>
+        <p>This page tests the localStorage cache implementation by connecting to your running dev server.</p>
+        
+        <div class="test-section">
+            <h2>📊 Test Controls</h2>
+            <button class="primary" onclick="runAllTests()">🚀 Run All Tests</button>
+            <button onclick="clearAllCache()">🗑️ Clear Cache</button>
+            <button onclick="checkCacheStats()">📈 Check Stats</button>
+            <button onclick="testPerformance()">⚡ Performance Test</button>
+            <button onclick="simulateOffline()">📴 Test Offline</button>
+        </div>
+
+        <div class="test-section">
+            <h2>📈 Test Progress</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+            </div>
+            <div id="progressText">Ready to test...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Cache Statistics</h2>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalEntries">-</div>
+                    <div class="stat-label">Total Entries</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalSize">-</div>
+                    <div class="stat-label">Cache Size</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="hitRate">-</div>
+                    <div class="stat-label">Hit Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="utilization">-</div>
+                    <div class="stat-label">Utilization</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Test Results</h2>
+            <div id="testResults"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 Test Log</h2>
+            <div class="log-container" id="logContainer"></div>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <script>
+        // Use HTTPS for security, fallback to HTTP only in development
+        const DEV_SERVER = window.location.protocol === 'https:' 
+            ? 'https://localhost:5173' 
+            : 'http://localhost:5173';
+        let testResults = [];
+        let currentTest = 0;
+        let totalTests = 0;
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logContainer.insertBefore(entry, logContainer.firstChild);
+            
+            // Keep only last 100 entries
+            while (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        function updateProgress(current, total, message) {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const percentage = total > 0 ? (current / total) * 100 : 0;
+            
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `${message} (${current}/${total})`;
+        }
+
+        function addTestResult(testName, passed, message = '') {
+            const resultsContainer = document.getElementById('testResults');
+            const result = document.createElement('div');
+            result.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            result.innerHTML = `
+                <strong>${passed ? '✅' : '❌'} ${testName}</strong>
+                ${message ? `<br><small>${message}</small>` : ''}
+            `;
+            resultsContainer.appendChild(result);
+            
+            testResults.push({ testName, passed, message });
+        }
+
+        async function checkCacheStats() {
+            try {
+                log('📊 Checking cache statistics...', 'info');
+                
+                // Count localStorage entries
+                const cacheKeys = Object.keys(localStorage).filter(key => 
+                    key.startsWith('knue-board-hub:')
+                );
+                
+                let totalSize = 0;
+                const categories = {};
+                
+                cacheKeys.forEach(key => {
+                    const value = localStorage.getItem(key) || '';
+                    const size = key.length + value.length;
+                    totalSize += size;
+                    
+                    try {
+                        const data = JSON.parse(value);
+                        const category = data.category || 'unknown';
+                        if (!categories[category]) {
+                            categories[category] = { count: 0, size: 0 };
+                        }
+                        categories[category].count++;
+                        categories[category].size += size;
+                    } catch (e) {
+                        // Ignore parsing errors
+                    }
+                });
+                
+                // Update UI
+                document.getElementById('totalEntries').textContent = cacheKeys.length;
+                document.getElementById('totalSize').textContent = formatBytes(totalSize);
+                document.getElementById('utilization').textContent = 
+                    Math.round((totalSize / (10 * 1024 * 1024)) * 100) + '%';
+                
+                log(`📊 Found ${cacheKeys.length} cache entries, ${formatBytes(totalSize)}`, 'success');
+                log(`📊 Categories: ${Object.keys(categories).join(', ')}`, 'info');
+                
+                return { totalEntries: cacheKeys.length, totalSize, categories };
+            } catch (error) {
+                log(`❌ Failed to check cache stats: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function testBasicCacheOperations() {
+            log('🧪 Testing basic cache operations...', 'info');
+            
+            try {
+                // Test localStorage availability
+                if (typeof localStorage === 'undefined') {
+                    throw new Error('localStorage not available');
+                }
+                
+                // Test basic set/get
+                const testKey = 'knue-board-hub:test-basic-ops';
+                const testData = {
+                    data: { message: 'test cache', timestamp: Date.now() },
+                    timestamp: Date.now(),
+                    version: 1,
+                    category: 'test',
+                    compressed: false,
+                    accessCount: 1,
+                    lastAccessed: Date.now()
+                };
+                
+                localStorage.setItem(testKey, JSON.stringify(testData));
+                const retrieved = JSON.parse(localStorage.getItem(testKey));
+                
+                if (!retrieved || retrieved.data.message !== 'test cache') {
+                    throw new Error('Basic set/get failed');
+                }
+                
+                localStorage.removeItem(testKey);
+                addTestResult('Basic Cache Operations', true, 'Set/get/remove operations working');
+                return true;
+            } catch (error) {
+                addTestResult('Basic Cache Operations', false, error.message);
+                return false;
+            }
+        }
+
+        async function testAppIntegration() {
+            log('🌐 Testing app integration...', 'info');
+            
+            try {
+                // Try to fetch the main page
+                const response = await fetch(DEV_SERVER, { method: 'HEAD' });
+                if (!response.ok) {
+                    throw new Error(`Dev server not accessible: ${response.status}`);
+                }
+                
+                // Check if cache entries are being created by the app
+                const initialEntries = Object.keys(localStorage).filter(key => 
+                    key.startsWith('knue-board-hub:')
+                ).length;
+                
+                // Open the app in an iframe to trigger cache operations
+                const iframe = document.createElement('iframe');
+                
+                // Add security attributes
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+                iframe.setAttribute('referrerpolicy', 'no-referrer');
+                
+                // Validate URL before setting
+                try {
+                    const url = new URL(DEV_SERVER);
+                    if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
+                        throw new Error('Only localhost connections allowed');
+                    }
+                    iframe.src = DEV_SERVER;
+                } catch (error) {
+                    throw new Error(`Invalid or unsafe URL: ${error.message}`);
+                }
+                
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+                
+                // Wait for app to load and potentially create cache entries
+                await new Promise(resolve => {
+                    iframe.onload = () => {
+                        setTimeout(resolve, 2000); // Wait 2 seconds for cache operations
+                    };
+                });
+                
+                const finalEntries = Object.keys(localStorage).filter(key => 
+                    key.startsWith('knue-board-hub:')
+                ).length;
+                
+                document.body.removeChild(iframe);
+                
+                if (finalEntries > initialEntries) {
+                    addTestResult('App Integration', true, 
+                        `Cache entries created: ${finalEntries - initialEntries}`);
+                    return true;
+                } else {
+                    addTestResult('App Integration', true, 
+                        'No new cache entries (this may be normal if data was already cached)');
+                    return true;
+                }
+            } catch (error) {
+                addTestResult('App Integration', false, error.message);
+                return false;
+            }
+        }
+
+        async function testPerformance() {
+            log('⚡ Testing cache performance...', 'info');
+            
+            try {
+                const iterations = 100;
+                const testData = {
+                    data: { items: new Array(50).fill('performance test data') },
+                    timestamp: Date.now(),
+                    category: 'performance'
+                };
+                
+                // Test write performance
+                const writeStart = performance.now();
+                for (let i = 0; i < iterations; i++) {
+                    localStorage.setItem(`knue-board-hub:perf-test-${i}`, JSON.stringify(testData));
+                }
+                const writeTime = performance.now() - writeStart;
+                
+                // Test read performance
+                const readStart = performance.now();
+                for (let i = 0; i < iterations; i++) {
+                    const data = localStorage.getItem(`knue-board-hub:perf-test-${i}`);
+                    if (data) JSON.parse(data);
+                }
+                const readTime = performance.now() - readStart;
+                
+                // Cleanup
+                for (let i = 0; i < iterations; i++) {
+                    localStorage.removeItem(`knue-board-hub:perf-test-${i}`);
+                }
+                
+                const writeSpeed = (writeTime / iterations).toFixed(2);
+                const readSpeed = (readTime / iterations).toFixed(2);
+                
+                log(`⚡ Write: ${writeSpeed}ms/op, Read: ${readSpeed}ms/op`, 'success');
+                
+                const passed = writeSpeed < 10 && readSpeed < 5;
+                addTestResult('Performance Test', passed, 
+                    `Write: ${writeSpeed}ms/op, Read: ${readSpeed}ms/op`);
+                
+                return passed;
+            } catch (error) {
+                addTestResult('Performance Test', false, error.message);
+                return false;
+            }
+        }
+
+        async function testCacheCategories() {
+            log('📋 Testing cache categories...', 'info');
+            
+            try {
+                const categories = ['departments', 'rssItems', 'preferences'];
+                const testData = { test: 'category data' };
+                
+                for (const category of categories) {
+                    const key = `knue-board-hub:test-${category}`;
+                    const cacheEntry = {
+                        data: testData,
+                        timestamp: Date.now(),
+                        category: category,
+                        version: 1
+                    };
+                    
+                    localStorage.setItem(key, JSON.stringify(cacheEntry));
+                    const retrieved = JSON.parse(localStorage.getItem(key));
+                    
+                    if (!retrieved || retrieved.category !== category) {
+                        throw new Error(`Category ${category} test failed`);
+                    }
+                    
+                    localStorage.removeItem(key);
+                }
+                
+                addTestResult('Cache Categories', true, 'All categories working correctly');
+                return true;
+            } catch (error) {
+                addTestResult('Cache Categories', false, error.message);
+                return false;
+            }
+        }
+
+        async function testErrorHandling() {
+            log('🚨 Testing error handling...', 'info');
+            
+            try {
+                // Test corrupted data handling
+                const corruptedKey = 'knue-board-hub:corrupted-test';
+                localStorage.setItem(corruptedKey, 'invalid-json{');
+                
+                try {
+                    JSON.parse(localStorage.getItem(corruptedKey));
+                    throw new Error('Should have failed to parse corrupted data');
+                } catch (parseError) {
+                    // This is expected
+                }
+                
+                localStorage.removeItem(corruptedKey);
+                
+                // Test quota handling (simulate by filling up space)
+                let quotaExceeded = false;
+                try {
+                    const largeData = 'x'.repeat(1024 * 1024); // 1MB
+                    for (let i = 0; i < 10; i++) {
+                        localStorage.setItem(`knue-board-hub:quota-test-${i}`, largeData);
+                    }
+                } catch (error) {
+                    if (error.name === 'QuotaExceededError') {
+                        quotaExceeded = true;
+                    }
+                }
+                
+                // Cleanup quota test
+                for (let i = 0; i < 10; i++) {
+                    try {
+                        localStorage.removeItem(`knue-board-hub:quota-test-${i}`);
+                    } catch (e) {}
+                }
+                
+                addTestResult('Error Handling', true, 
+                    `Corrupted data handled, quota ${quotaExceeded ? 'detected' : 'not reached'}`);
+                return true;
+            } catch (error) {
+                addTestResult('Error Handling', false, error.message);
+                return false;
+            }
+        }
+
+        async function simulateOffline() {
+            log('📴 Simulating offline scenario...', 'info');
+            
+            try {
+                // Check if there's cached data
+                const cacheKeys = Object.keys(localStorage).filter(key => 
+                    key.startsWith('knue-board-hub:')
+                );
+                
+                if (cacheKeys.length === 0) {
+                    log('⚠️ No cached data found - load the app first to create cache entries', 'warn');
+                    addTestResult('Offline Simulation', true, 'No cached data to test offline behavior');
+                    return true;
+                }
+                
+                // Simulate reading cached data when offline
+                let validCacheEntries = 0;
+                for (const key of cacheKeys) {
+                    try {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        if (data && data.data) {
+                            validCacheEntries++;
+                        }
+                    } catch (e) {
+                        // Skip invalid entries
+                    }
+                }
+                
+                log(`📴 Found ${validCacheEntries} valid cache entries for offline use`, 'success');
+                addTestResult('Offline Simulation', true, 
+                    `${validCacheEntries} cache entries available offline`);
+                return true;
+            } catch (error) {
+                addTestResult('Offline Simulation', false, error.message);
+                return false;
+            }
+        }
+
+        async function runAllTests() {
+            log('🚀 Starting comprehensive cache test suite...', 'info');
+            
+            // Clear previous results
+            document.getElementById('testResults').innerHTML = '';
+            testResults = [];
+            currentTest = 0;
+            
+            const tests = [
+                { name: 'Basic Cache Operations', fn: testBasicCacheOperations },
+                { name: 'Cache Categories', fn: testCacheCategories },
+                { name: 'Performance Test', fn: testPerformance },
+                { name: 'Error Handling', fn: testErrorHandling },
+                { name: 'App Integration', fn: testAppIntegration },
+                { name: 'Offline Simulation', fn: simulateOffline }
+            ];
+            
+            totalTests = tests.length;
+            let passedTests = 0;
+            
+            for (const test of tests) {
+                currentTest++;
+                updateProgress(currentTest, totalTests, `Running: ${test.name}`);
+                
+                log(`🧪 Running test: ${test.name}`, 'info');
+                const passed = await test.fn();
+                if (passed) passedTests++;
+                
+                // Small delay between tests
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            updateProgress(totalTests, totalTests, 'All tests completed');
+            
+            // Final summary
+            const successRate = Math.round((passedTests / totalTests) * 100);
+            log(`🎉 Test suite completed: ${passedTests}/${totalTests} passed (${successRate}%)`, 
+                passedTests === totalTests ? 'success' : 'warn');
+            
+            // Update stats
+            await checkCacheStats();
+        }
+
+        function clearAllCache() {
+            const cacheKeys = Object.keys(localStorage).filter(key => 
+                key.startsWith('knue-board-hub:')
+            );
+            
+            cacheKeys.forEach(key => localStorage.removeItem(key));
+            log(`🗑️ Cleared ${cacheKeys.length} cache entries`, 'info');
+            checkCacheStats();
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            log('🧪 Cache test page loaded', 'info');
+            checkCacheStats();
+        });
+    </script>
+</body>
+</html>

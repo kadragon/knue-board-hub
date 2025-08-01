@@ -1,100 +1,90 @@
 <template>
   <div class="rss-feed-list" :class="containerClass">
-    <!-- Header Section -->
-    <header class="feed-header">
-      <div class="header-top">
-        <div class="title-section">
-          <h1 class="app-title">
-            <i class="i-tabler-school w-6 h-6 mr-2 text-knue-primary" />
-            KNUE 게시판
-          </h1>
-          <p class="app-subtitle">한국교원대학교 통합 공지사항</p>
-        </div>
-
-        <div class="header-actions">
-          <RefreshButton
-            :loading="isRefreshing"
-            :last-update="lastUpdateTime"
-            :update-count="newItemsCount"
-            :show-update-badge="newItemsCount > 0"
-            :show-last-update="!compact"
-            :pull-to-refresh="true"
-            :auto-refresh="autoRefresh"
-            :icon-only="compact"
-            @refresh="handleRefresh"
-            @pull-refresh="handlePullRefresh"
+    <!-- Filter Bar -->
+    <div v-if="showFilters" class="filter-bar">
+      <div class="filter-group">
+        <!-- Search Input -->
+        <div class="search-wrapper">
+          <input
+            v-model="searchQuery"
+            type="search"
+            placeholder="게시글 검색..."
+            class="search-input"
+            :disabled="isLoading"
           />
+          <i class="search-icon i-tabler-search" />
         </div>
+
+        <!-- Date Filter -->
+        <select v-model="dateFilter" class="date-filter">
+          <option value="all">전체 기간</option>
+          <option value="today">오늘</option>
+          <option value="week">이번 주</option>
+          <option value="month">이번 달</option>
+        </select>
+
+        <!-- Sort Options -->
+        <select v-model="sortOption" class="sort-select">
+          <option value="date-desc">최신순</option>
+          <option value="date-asc">오래된순</option>
+          <option value="department">게시판순</option>
+        </select>
       </div>
 
-      <!-- Department Selector -->
-      <DepartmentSelector
-        v-model="selectedDepartments"
-        :compact="compact"
-        :show-stats="showStats"
-        :loading-departments="loadingDepartments"
-        :error-departments="errorDepartments"
-        :department-stats="departmentStats"
-        :department-errors="departmentErrors"
-        @selection-change="handleDepartmentChange"
-        @apply="handleDepartmentApply"
-      />
-
-      <!-- Filter Bar -->
-      <div v-if="showFilters" class="filter-bar">
-        <div class="filter-group">
-          <!-- Search Input -->
-          <div class="search-wrapper">
-            <input
-              v-model="searchQuery"
-              type="search"
-              placeholder="게시글 검색..."
-              class="search-input"
-              :disabled="isLoading"
-            />
-            <i class="search-icon i-tabler-search" />
-          </div>
-
-          <!-- Date Filter -->
-          <select v-model="dateFilter" class="date-filter">
-            <option value="all">전체 기간</option>
-            <option value="today">오늘</option>
-            <option value="week">이번 주</option>
-            <option value="month">이번 달</option>
-          </select>
-
-          <!-- Sort Options -->
-          <select v-model="sortOption" class="sort-select">
-            <option value="date-desc">최신순</option>
-            <option value="date-asc">오래된순</option>
-            <option value="department">게시판순</option>
-          </select>
-        </div>
-
-        <!-- Active Filters -->
-        <div v-if="hasActiveFilters" class="active-filters">
-          <span class="filter-label">필터:</span>
-          <button
-            v-if="searchQuery"
-            @click="searchQuery = ''"
-            class="filter-tag"
-          >
-            "{{ searchQuery }}" <i class="i-tabler-x w-3 h-3 ml-1" />
-          </button>
-          <button
-            v-if="dateFilter !== 'all'"
-            @click="dateFilter = 'all'"
-            class="filter-tag"
-          >
-            {{ getDateFilterLabel(dateFilter) }}
-            <i class="i-tabler-x w-3 h-3 ml-1" />
-          </button>
-        </div>
+      <!-- Active Filters -->
+      <div v-if="hasActiveFilters" class="active-filters">
+        <span class="filter-label">필터:</span>
+        <button
+          v-if="searchQuery"
+          @click="searchQuery = ''"
+          class="filter-tag"
+        >
+          "{{ searchQuery }}" <i class="i-tabler-x w-3 h-3 ml-1" />
+        </button>
+        <button
+          v-if="dateFilter !== 'all'"
+          @click="dateFilter = 'all'"
+          class="filter-tag"
+        >
+          {{ getDateFilterLabel(dateFilter) }}
+          <i class="i-tabler-x w-3 h-3 ml-1" />
+        </button>
       </div>
-    </header>
+    </div>
 
     <!-- Main Content -->
     <main class="feed-content">
+      <!-- Selected Departments Info -->
+      <div v-if="selectedDepartments.length > 0 && !isInitialLoading" class="selected-departments-info">
+        <div class="departments-header">
+          <div class="departments-title">
+            <i class="i-tabler-eye w-4 h-4 mr-2" />
+            <span>현재 보고 있는 게시판</span>
+            <span class="department-count">({{ selectedDepartments.length }}개)</span>
+          </div>
+          <router-link to="/departments" class="settings-link">
+            <i class="i-tabler-settings w-4 h-4 mr-1" />
+            설정
+          </router-link>
+        </div>
+        <div class="departments-list">
+          <span
+            v-for="dept in selectedDepartments.slice(0, 5)"
+            :key="`current-${dept.id}`"
+            class="department-chip"
+            :class="`chip-${dept.id}`"
+          >
+            {{ dept.icon }} {{ dept.name }}
+          </span>
+          <span 
+            v-if="selectedDepartments.length > 5"
+            class="more-departments"
+          >
+            +{{ selectedDepartments.length - 5 }}개 더
+          </span>
+        </div>
+      </div>
+
       <!-- Loading State -->
       <LoadingSpinner
         v-if="isInitialLoading"
@@ -276,15 +266,12 @@ import { useDepartments } from "../composables/useDepartments.js";
 import {
   groupByDateCategory,
   isToday,
-  formatDateForMobile,
 } from "../utils/dateUtils.js";
 
 // Components
 import RssItem from "./RssItem.vue";
-import DepartmentSelector from "./DepartmentSelector.vue";
 import LoadingSpinner from "./LoadingSpinner.vue";
 import EmptyState from "./EmptyState.vue";
-import RefreshButton from "./RefreshButton.vue";
 
 // Props
 const props = defineProps({
@@ -341,18 +328,19 @@ const props = defineProps({
 // Composables
 const { 
   getDefaultDepartments, 
-  initialized: departmentsInitialized 
+  initialized: departmentsInitialized,
+  departments: allDepartments,
+  getDepartment
 } = useDepartments();
 const {
-  feeds,
   allItems,
   loading,
   errors,
-  lastUpdate,
   fetchFeeds,
   refreshFeeds,
   hasErrors,
   setActiveDepartments,
+  getSelectedDepartments,
 } = useRssFeed({
   autoRefresh: props.autoRefresh,
   refreshInterval: 5 * 60 * 1000, // 5 minutes
@@ -361,7 +349,7 @@ const {
 const { showSuccess, showError, showFeedUpdate } = useGlobalNotifications();
 
 // State - Initialize empty, will be set once departments are loaded
-const selectedDepartments = ref([]);
+const selectedDepartmentIds = ref([]);
 const searchQuery = ref("");
 const dateFilter = ref("all");
 const sortOption = ref("date-desc");
@@ -395,7 +383,6 @@ const errorMessage = computed(() => {
   return errorArray[0]?.message || "알 수 없는 오류가 발생했습니다";
 });
 
-const lastUpdateTime = computed(() => lastUpdate.value);
 
 const loadingProgress = computed(() => {
   // Simulate loading progress
@@ -478,34 +465,16 @@ const totalItems = computed(() => filteredItems.value.length);
 const newItemsToday = computed(
   () => filteredItems.value.filter((item) => isToday(item.pubDate)).length
 );
-const activeDepartmentCount = computed(() => selectedDepartments.value.length);
-
-// Department data
-const loadingDepartments = computed(() =>
-  selectedDepartments.value.filter((id) => loading.value)
-);
-
-const errorDepartments = computed(() => Array.from(errors.value.keys()));
-
-const departmentStats = computed(() => {
-  const stats = {};
-  selectedDepartments.value.forEach((id) => {
-    const items = allItems.value.filter((item) => item.departmentId === id);
-    stats[id] = {
-      itemCount: items.length,
-      lastUpdate: lastUpdate.value,
-    };
-  });
-  return stats;
+// Selected departments info for display
+const selectedDepartments = computed(() => {
+  return selectedDepartmentIds.value
+    .map(id => getDepartment(id))
+    .filter(dept => dept) // Filter out any undefined departments
 });
 
-const departmentErrors = computed(() => {
-  const errorObj = {};
-  errors.value.forEach((error, departmentId) => {
-    errorObj[departmentId] = error;
-  });
-  return errorObj;
-});
+const activeDepartmentCount = computed(() => selectedDepartmentIds.value.length);
+
+
 
 // Methods
 async function handleRefresh() {
@@ -531,44 +500,21 @@ async function handleRefresh() {
   }
 }
 
-async function handlePullRefresh() {
+
+async function handleAppRefresh() {
   await handleRefresh();
 }
 
-async function handleDepartmentChange({ selected }) {
-  selectedDepartments.value = selected;
 
-  // Update active departments immediately to reflect UI changes
-  setActiveDepartments(selected);
-
-  // Only fetch feeds that aren't already loaded or are outdated
-  const needsFetching = selected.filter((deptId) => {
-    const feed = feeds.value.get(deptId);
-    return (
-      !feed ||
-      (feed.fetchedAt && Date.now() - feed.fetchedAt.getTime() > 5 * 60 * 1000)
-    ); // 5 minutes
-  });
-
-  if (needsFetching.length > 0) {
-    await fetchFeeds(needsFetching);
-  }
+function handleItemClick() {
+  // Handle item click
 }
 
-async function handleDepartmentApply({ selected }) {
-  await fetchFeeds(selected);
-  showSuccess(`${selected.length}개 게시판이 적용되었습니다`);
-}
-
-function handleItemClick(item) {
-  console.log("Item clicked:", item);
-}
-
-function handleItemShare(item) {
+function handleItemShare() {
   showSuccess("링크가 공유되었습니다");
 }
 
-function handleItemBookmark({ item, bookmarked }) {
+function handleItemBookmark({ bookmarked }) {
   if (bookmarked) {
     showSuccess("북마크에 추가되었습니다");
   } else {
@@ -663,27 +609,27 @@ function handleScroll() {
 // Store cleanup functions
 let infiniteScrollCleanup = null;
 
-// Watch for departments initialization and set defaults
+// Watch for departments initialization and load selected departments
 watch(departmentsInitialized, async (isInitialized) => {
-  if (isInitialized && selectedDepartments.value.length === 0) {
-    const defaultDepts = getDefaultDepartments();
-    if (defaultDepts.length > 0) {
-      selectedDepartments.value = defaultDepts;
-      setActiveDepartments(defaultDepts);
-      await fetchFeeds(defaultDepts);
+  if (isInitialized && selectedDepartmentIds.value.length === 0) {
+    const selectedIds = await getSelectedDepartments();
+    if (selectedIds.length > 0) {
+      selectedDepartmentIds.value = selectedIds;
+      setActiveDepartments(selectedIds, false); // Don't persist again, already persisted
+      await fetchFeeds(selectedIds);
     }
   }
 }, { immediate: true });
 
 // Lifecycle
 onMounted(async () => {
-  // If departments are already initialized (cached), set defaults immediately
-  if (departmentsInitialized.value && selectedDepartments.value.length === 0) {
-    const defaultDepts = getDefaultDepartments();
-    if (defaultDepts.length > 0) {
-      selectedDepartments.value = defaultDepts;
-      setActiveDepartments(defaultDepts);
-      await fetchFeeds(defaultDepts);
+  // If departments are already initialized (cached), load selected departments immediately
+  if (departmentsInitialized.value && selectedDepartmentIds.value.length === 0) {
+    const selectedIds = await getSelectedDepartments();
+    if (selectedIds.length > 0) {
+      selectedDepartmentIds.value = selectedIds;
+      setActiveDepartments(selectedIds, false); // Don't persist again, already persisted
+      await fetchFeeds(selectedIds);
     }
   }
 
@@ -696,6 +642,9 @@ onMounted(async () => {
 
   // Setup scroll listener
   window.addEventListener("scroll", handleScroll);
+  
+  // Listen for app refresh events
+  window.addEventListener("app-refresh", handleAppRefresh);
 });
 
 onUnmounted(() => {
@@ -706,6 +655,9 @@ onUnmounted(() => {
 
   // Clean up scroll listener
   window.removeEventListener("scroll", handleScroll);
+  
+  // Clean up app refresh listener
+  window.removeEventListener("app-refresh", handleAppRefresh);
 });
 
 // Reset new items count after some time
@@ -729,57 +681,12 @@ watch(newItemsCount, (count) => {
   padding: 0.5rem;
 }
 
-/* Header */
-.feed-header {
-  background: white;
-  border-bottom: 1px solid theme("colors.gray.200");
-}
-
-.header-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-@media (max-width: 768px) {
-  .header-top {
-    padding: 0.75rem 1rem;
-  }
-}
-
-.title-section {
-  flex: 1;
-}
-
-.app-title {
-  display: flex;
-  align-items: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: theme("colors.gray.900");
-  margin: 0 0 0.25rem 0;
-}
-
-.app-subtitle {
-  font-size: 0.875rem;
-  color: theme("colors.gray.600");
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 /* Filter Bar */
 .filter-bar {
   padding: 1rem 1.5rem;
-  border-top: 1px solid theme("colors.gray.100");
-  background: theme("colors.gray.50");
+  background: white;
+  border-bottom: 1px solid theme("colors.gray.200");
+  margin-bottom: 1rem;
 }
 
 @media (max-width: 768px) {
@@ -813,6 +720,7 @@ watch(newItemsCount, (count) => {
   border-radius: 0.5rem;
   font-size: 0.875rem;
   background: white;
+  color: theme("colors.gray.900");
 }
 
 .search-input:focus {
@@ -888,6 +796,84 @@ watch(newItemsCount, (count) => {
   padding: 0 1rem;
   padding-top: 1rem;
   padding-bottom: 1.5rem;
+}
+
+/* Selected Departments Info */
+.selected-departments-info {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid theme('colors.gray.200');
+}
+
+.departments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.departments-title {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: theme('colors.gray.700');
+}
+
+.department-count {
+  color: theme('colors.gray.500');
+  font-weight: 400;
+  margin-left: 0.25rem;
+}
+
+.settings-link {
+  display: flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  background: theme('colors.gray.50');
+  border: 1px solid theme('colors.gray.200');
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  color: theme('colors.gray.600');
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.settings-link:hover {
+  background: theme('colors.gray.100');
+  border-color: theme('colors.gray.300');
+  color: theme('colors.knue.primary');
+}
+
+.departments-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.department-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  background: theme('colors.blue.50');
+  border: 1px solid theme('colors.blue.200');
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: theme('colors.blue.700');
+}
+
+.more-departments {
+  padding: 0.25rem 0.75rem;
+  background: theme('colors.gray.100');
+  color: theme('colors.gray.600');
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {
@@ -1157,6 +1143,22 @@ watch(newItemsCount, (count) => {
     font-size: 1rem;
     padding: 0.5rem 0.75rem;
   }
+
+  .selected-departments-info {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .departments-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .settings-link {
+    align-self: flex-end;
+  }
 }
 
 /* Dark Mode Support */
@@ -1165,16 +1167,47 @@ watch(newItemsCount, (count) => {
     background: theme("colors.gray.900");
   }
 
-  .feed-header {
+  .filter-bar {
     background: theme("colors.gray.800");
     border-color: theme("colors.gray.700");
   }
 
-  .app-title {
+  .search-input {
+    background: theme("colors.gray.700");
+    border-color: theme("colors.gray.600");
     color: theme("colors.gray.100");
   }
 
-  .app-subtitle {
+  .search-input:focus {
+    border-color: theme("colors.knue.primary");
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.2);
+  }
+
+  .search-input::placeholder {
+    color: theme("colors.gray.400");
+  }
+
+  .search-icon {
+    color: theme("colors.gray.400");
+  }
+
+  .date-filter,
+  .sort-select {
+    background: theme("colors.gray.700");
+    border-color: theme("colors.gray.600");
+    color: theme("colors.gray.100");
+  }
+
+  .filter-tag {
+    background: theme("colors.gray.700");
+    color: theme("colors.gray.200");
+  }
+
+  .filter-tag:hover {
+    background: theme("colors.gray.600");
+  }
+
+  .filter-label {
     color: theme("colors.gray.400");
   }
 
@@ -1186,5 +1219,168 @@ watch(newItemsCount, (count) => {
     background: theme("colors.gray.800");
     color: theme("colors.gray.100");
   }
+
+  .loading-message {
+    color: theme("colors.gray.300");
+  }
+
+  .error-message {
+    color: theme("colors.red.300");
+    background: theme("colors.red.900");
+    border-color: theme("colors.red.700");
+  }
+
+  .selected-departments-info {
+    background: theme("colors.gray.800");
+    border-color: theme("colors.gray.700");
+  }
+
+  .departments-title {
+    color: theme("colors.gray.300");
+  }
+
+  .department-count {
+    color: theme("colors.gray.400");
+  }
+
+  .settings-link {
+    background: theme("colors.gray.700");
+    border-color: theme("colors.gray.600");
+    color: theme("colors.gray.300");
+  }
+
+  .settings-link:hover {
+    background: theme("colors.gray.600");
+    border-color: theme("colors.gray.500");
+    color: theme("colors.knue.primary");
+  }
+
+  .department-chip {
+    background: theme("colors.blue.900");
+    border-color: theme("colors.blue.700");
+    color: theme("colors.blue.200");
+  }
+
+  .more-departments {
+    background: theme("colors.gray.700");
+    color: theme("colors.gray.300");
+  }
+}
+
+/* Dark Mode Support via class (for manual theme switching) */
+.dark .rss-feed-list {
+  background: theme("colors.gray.900");
+}
+
+.dark .filter-bar {
+  background: theme("colors.gray.800");
+  border-color: theme("colors.gray.700");
+}
+
+.dark .app-title {
+  color: theme("colors.gray.100");
+}
+
+.dark .app-subtitle {
+  color: theme("colors.gray.400");
+}
+
+.dark .filter-bar {
+  background: theme("colors.gray.800");
+  border-color: theme("colors.gray.700");
+}
+
+.dark .search-input {
+  background: theme("colors.gray.700");
+  border-color: theme("colors.gray.600");
+  color: theme("colors.gray.100");
+}
+
+.dark .search-input:focus {
+  border-color: theme("colors.knue.primary");
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.2);
+}
+
+.dark .search-input::placeholder {
+  color: theme("colors.gray.400");
+}
+
+.dark .search-icon {
+  color: theme("colors.gray.400");
+}
+
+.dark .date-filter,
+.dark .sort-select {
+  background: theme("colors.gray.700");
+  border-color: theme("colors.gray.600");
+  color: theme("colors.gray.100");
+}
+
+.dark .filter-tag {
+  background: theme("colors.gray.700");
+  color: theme("colors.gray.200");
+}
+
+.dark .filter-tag:hover {
+  background: theme("colors.gray.600");
+}
+
+.dark .filter-label {
+  color: theme("colors.gray.400");
+}
+
+.dark .stats-summary {
+  background: theme("colors.gray.800");
+}
+
+.dark .date-header {
+  background: theme("colors.gray.800");
+  color: theme("colors.gray.100");
+}
+
+.dark .loading-message {
+  color: theme("colors.gray.300");
+}
+
+.dark .error-message {
+  color: theme("colors.red.300");
+  background: theme("colors.red.900");
+  border-color: theme("colors.red.700");
+}
+
+.dark .selected-departments-info {
+  background: theme("colors.gray.800");
+  border-color: theme("colors.gray.700");
+}
+
+.dark .departments-title {
+  color: theme("colors.gray.300");
+}
+
+.dark .department-count {
+  color: theme("colors.gray.400");
+}
+
+.dark .settings-link {
+  background: theme("colors.gray.700");
+  border-color: theme("colors.gray.600");
+  color: theme("colors.gray.300");
+}
+
+.dark .settings-link:hover {
+  background: theme("colors.gray.600");
+  border-color: theme("colors.gray.500");
+  color: theme("colors.knue.primary");
+}
+
+.dark .department-chip {
+  background: theme("colors.blue.900");
+  border-color: theme("colors.blue.700");
+  color: theme("colors.blue.200");
+}
+
+.dark .more-departments {
+  background: theme("colors.gray.700");
+  color: theme("colors.gray.300");
 }
 </style>

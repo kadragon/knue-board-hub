@@ -160,15 +160,15 @@ const {
 const { getDefaultDepartments, getDepartment } = useDepartments()
 
 // State
-const selectedDepartments = ref(['main', 'academic', 'scholarship'])
+const selectedDepartments = ref([])
 const showStats = ref(true)
 
-// Presets
+// Presets - Updated to match actual database department IDs
 const presets = {
-  default: ['main', 'academic', 'scholarship'],
-  academic: ['main', 'academic', 'scholarship', 'tuition'],
-  events: ['main', 'events', 'cheongram'],
-  all: ['main', 'academic', 'cheongram', 'tuition', 'scholarship', 'events']
+  default: ['general', 'academic', 'scholarship'],
+  academic: ['general', 'academic', 'scholarship', 'tuition'],
+  events: ['general', 'events', 'cheongram'],
+  all: ['general', 'academic', 'cheongram', 'tuition', 'scholarship', 'events']
 }
 
 // Computed
@@ -237,7 +237,7 @@ function handleDepartmentToggle({ departmentId, selected, allSelected }) {
   const department = getDepartment(departmentId)
   const action = selected ? '선택됨' : '선택 해제됨'
   
-  console.log(`${department?.name} ${action}`)
+  console.log(`${department?.name || departmentId} ${action}`)
 }
 
 function selectPreset(presetName) {
@@ -270,12 +270,18 @@ function formatLastUpdate(date) {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+  // Initialize with default departments if none selected
+  if (selectedDepartments.value.length === 0) {
+    // Use preset default instead of getDefaultDepartments to ensure consistency
+    selectedDepartments.value = [...presets.default]
+  }
+  
   // Load initial data for stats - only if not already loaded
   if (selectedDepartments.value.length > 0) {
     const needsLoading = selectedDepartments.value.some(deptId => !allItems.value.some(item => item.departmentId === deptId))
     if (needsLoading) {
-      fetchFeeds(selectedDepartments.value)
+      await fetchFeeds(selectedDepartments.value)
     }
   }
 })

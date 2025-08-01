@@ -322,7 +322,14 @@ function selectNone() {
 }
 
 function selectDefaults() {
-  selectedDepartmentIds.value = getDefaultDepartments().map(d => d.id)
+  // Use first 3 departments by priority, or fallback to hardcoded defaults if needed
+  const defaultIds = getDefaultDepartments()
+  if (defaultIds && defaultIds.length > 0) {
+    selectedDepartmentIds.value = defaultIds
+  } else {
+    // Fallback to known good IDs based on API structure
+    selectedDepartmentIds.value = ['general', 'academic', 'scholarship']
+  }
 }
 
 function toggleExpanded() {
@@ -386,6 +393,8 @@ watch(() => props.modelValue, (newValue) => {
   
   isUpdatingFromParent = true
   selectedDepartmentIds.value = [...newValue]
+  // Update initial selection when parent updates
+  initialSelection.value = [...newValue]
   
   // Reset flag on next tick
   nextTick(() => {
@@ -395,9 +404,14 @@ watch(() => props.modelValue, (newValue) => {
 
 // Lifecycle
 onMounted(() => {
-  // Set initial selection if empty
+  // Set initial selection for change tracking
+  initialSelection.value = [...selectedDepartmentIds.value]
+  
+  // Set initial selection if empty (after setting initialSelection)
   if (selectedDepartmentIds.value.length === 0) {
     selectDefaults()
+    // Update initialSelection after default selection
+    initialSelection.value = [...selectedDepartmentIds.value]
   }
 })
 </script>
