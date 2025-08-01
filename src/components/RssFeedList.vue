@@ -344,9 +344,7 @@ const props = defineProps({
 
 // Composables
 const { 
-  getDefaultDepartments, 
   initialized: departmentsInitialized,
-  departments: allDepartments,
   getDepartment
 } = useDepartments();
 const {
@@ -369,7 +367,6 @@ const {
   filterItems, 
   hasBlockedKeywords, 
   blockedKeywords, 
-  getFilterStats,
   removeBlockedKeyword
 } = useKeywordFilter();
 

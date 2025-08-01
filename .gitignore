@@ -73,6 +73,7 @@ public
 # Temporary folders
 tmp/
 temp/
+*.tmp
 
 # Runtime data
 pids

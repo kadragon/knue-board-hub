@@ -8,8 +8,28 @@ const blockedKeywords = ref(new Set());
 const isInitialized = ref(false);
 
 /**
- * Composable for managing keyword filtering functionality
- * Allows users to block posts containing specific keywords
+ * Vue 3 composable for keyword-based content filtering
+ * 
+ * Provides reactive keyword management with localStorage persistence.
+ * Filters RSS feed items based on user-defined blocked keywords.
+ * 
+ * @example
+ * ```javascript
+ * const {
+ *   blockedKeywords,
+ *   addBlockedKeyword,
+ *   filterItems
+ * } = useKeywordFilter()
+ * 
+ * // Add a keyword
+ * addBlockedKeyword('spam')
+ * 
+ * // Filter RSS items
+ * const filtered = filterItems(rssItems)
+ * ```
+ * 
+ * @returns {Object} Keyword filter API object
+ * @see {@link https://docs.knue-board-hub.dev/api/useKeywordFilter} Full API documentation
  */
 export function useKeywordFilter() {
   // Initialize from localStorage if not already done
@@ -22,7 +42,10 @@ export function useKeywordFilter() {
   const blockedKeywordsList = computed(() => Array.from(blockedKeywords.value));
   const hasBlockedKeywords = computed(() => blockedKeywords.value.size > 0);
 
-  // Load blocked keywords from localStorage
+  /**
+   * Load blocked keywords from localStorage
+   * @private
+   */
   function loadBlockedKeywords() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -36,7 +59,10 @@ export function useKeywordFilter() {
     }
   }
 
-  // Save blocked keywords to localStorage
+  /**
+   * Save blocked keywords to localStorage
+   * @private
+   */
   function saveBlockedKeywords() {
     try {
       const keywordArray = Array.from(blockedKeywords.value);
@@ -46,7 +72,11 @@ export function useKeywordFilter() {
     }
   }
 
-  // Add a keyword to the blocked list
+  /**
+   * Add a keyword to the blocked list
+   * @param {string} keyword - The keyword to block (case-insensitive)
+   * @returns {boolean} True if keyword was added, false if already exists
+   */
   function addBlockedKeyword(keyword) {
     if (!keyword || typeof keyword !== 'string') return false;
     
@@ -62,7 +92,11 @@ export function useKeywordFilter() {
     return wasAdded;
   }
 
-  // Remove a keyword from the blocked list
+  /**
+   * Remove a keyword from the blocked list
+   * @param {string} keyword - The keyword to remove (case-insensitive)
+   * @returns {boolean} True if keyword was removed, false if not found
+   */
   function removeBlockedKeyword(keyword) {
     if (!keyword || typeof keyword !== 'string') return false;
     
@@ -77,7 +111,10 @@ export function useKeywordFilter() {
     return wasRemoved;
   }
 
-  // Clear all blocked keywords
+  /**
+   * Clear all blocked keywords
+   * @returns {boolean} True if keywords were cleared, false if list was empty
+   */
   function clearBlockedKeywords() {
     const wasCleared = blockedKeywords.value.size > 0;
     blockedKeywords.value.clear();
@@ -85,7 +122,11 @@ export function useKeywordFilter() {
     return wasCleared;
   }
 
-  // Check if a text contains any blocked keywords
+  /**
+   * Check if a text contains any blocked keywords
+   * @param {string} text - Text to check for blocked keywords
+   * @returns {boolean} True if text contains blocked keywords
+   */
   function containsBlockedKeyword(text) {
     if (!text || typeof text !== 'string' || blockedKeywords.value.size === 0) {
       return false;
@@ -102,7 +143,11 @@ export function useKeywordFilter() {
     return false;
   }
 
-  // Get the blocked keywords that match the given text
+  /**
+   * Get the blocked keywords that match the given text
+   * @param {string} text - Text to analyze
+   * @returns {string[]} Array of matching blocked keywords
+   */
   function getMatchingKeywords(text) {
     if (!text || typeof text !== 'string' || blockedKeywords.value.size === 0) {
       return [];
@@ -120,7 +165,11 @@ export function useKeywordFilter() {
     return matches;
   }
 
-  // Filter out items that contain blocked keywords
+  /**
+   * Filter out RSS items that contain blocked keywords
+   * @param {Array} items - Array of RSS item objects
+   * @returns {Array} Filtered array with blocked items removed
+   */
   function filterItems(items) {
     if (!Array.isArray(items) || blockedKeywords.value.size === 0) {
       return items;
@@ -138,7 +187,12 @@ export function useKeywordFilter() {
     });
   }
 
-  // Get statistics about filtering
+  /**
+   * Get statistics about filtering performance
+   * @param {Array} originalItems - Original items before filtering
+   * @param {Array} filteredItems - Items after filtering
+   * @returns {Object} Statistics object with counts and percentages
+   */
   function getFilterStats(originalItems, filteredItems) {
     const originalCount = originalItems?.length || 0;
     const filteredCount = filteredItems?.length || 0;
@@ -152,7 +206,11 @@ export function useKeywordFilter() {
     };
   }
 
-  // Import keywords from a string (comma or newline separated)
+  /**
+   * Import keywords from a formatted string
+   * @param {string} keywordString - Keywords separated by commas or newlines
+   * @returns {number} Count of newly added keywords
+   */
   function importKeywords(keywordString) {
     if (!keywordString || typeof keywordString !== 'string') return 0;
     
@@ -171,7 +229,10 @@ export function useKeywordFilter() {
     return addedCount;
   }
 
-  // Export keywords as a string
+  /**
+   * Export all blocked keywords as a newline-separated string
+   * @returns {string} Newline-separated list of keywords
+   */
   function exportKeywords() {
     return Array.from(blockedKeywords.value).join('\n');
   }

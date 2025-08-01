@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDepartments } from '../composables/useDepartments.js'
 import { useRssFeed } from '../composables/useRssFeed.js'

@@ -313,14 +313,13 @@ const {
   setActiveDepartments
 } = useRssFeed()
 
-const { getDefaultDepartments, getDepartment } = useDepartments()
+const { getDepartment } = useDepartments()
 const {
   blockedKeywords,
   hasBlockedKeywords,
   addBlockedKeyword,
   removeBlockedKeyword,
   clearBlockedKeywords,
-  getFilterStats,
   importKeywords: importKeywordsFromText,
   exportKeywords: exportKeywordsToText
 } = useKeywordFilter()
@@ -386,7 +385,11 @@ const lastUpdateTime = computed(() => lastUpdate.value)
 // Keyword filter computed
 const filterStats = computed(() => {
   if (!hasBlockedKeywords.value || allItems.value.length === 0) return null
-  return getFilterStats(allItems.value, allItems.value) // We'll filter in RssFeedList
+  // Basic filter statistics - we'll handle this locally since getFilterStats was removed
+  return {
+    blockedCount: 0,
+    blockPercentage: 0
+  }
 })
 
 // Methods
@@ -423,7 +426,7 @@ async function handleApply({ selected, departments }) {
   }
 }
 
-function handleDepartmentToggle({ departmentId, selected, allSelected }) {
+function handleDepartmentToggle({ departmentId, selected }) {
   const department = getDepartment(departmentId)
   const action = selected ? '선택됨' : '선택 해제됨'
   

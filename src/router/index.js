@@ -183,8 +183,8 @@ router.beforeEach((to, from, next) => {
   }
 
   // Analytics tracking (if implemented)
-  if (typeof gtag !== "undefined") {
-    gtag("config", "GA_MEASUREMENT_ID", {
+  if (typeof window !== "undefined" && "gtag" in window) {
+    window.gtag("config", "GA_MEASUREMENT_ID", {
       page_title: to.meta.title,
       page_location: window.location.href,
     });

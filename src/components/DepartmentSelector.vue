@@ -250,7 +250,7 @@ const applying = ref(false)
 const initialSelection = ref([...props.modelValue])
 
 // Use departments from API
-const { departments: allDepartments, loading: departmentsLoading, fetchDepartments, getDefaultDepartments } = useDepartments()
+const { departments: allDepartments, getDefaultDepartments } = useDepartments()
 const departments = computed(() => allDepartments.value)
 const selectionModes = [
   { value: 'default', label: '일반', icon: 'i-tabler-list' },
