@@ -976,12 +976,14 @@ watch(newItemsCount, (count) => {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
+    align-items: start; /* Prevent items from stretching to match row height */
   }
 
   .group-items {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
+    align-items: start; /* Prevent items from stretching to match row height */
   }
 }
 
@@ -989,10 +991,12 @@ watch(newItemsCount, (count) => {
 @media (min-width: 1400px) {
   .simple-items {
     grid-template-columns: repeat(3, 1fr);
+    align-items: start; /* Prevent items from stretching to match row height */
   }
 
   .group-items {
     grid-template-columns: repeat(3, 1fr);
+    align-items: start; /* Prevent items from stretching to match row height */
   }
 }
 

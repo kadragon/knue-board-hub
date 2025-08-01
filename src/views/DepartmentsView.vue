@@ -154,7 +154,9 @@ const {
   loading,
   errors,
   lastUpdate,
-  fetchFeeds
+  fetchFeeds,
+  getSelectedDepartments,
+  setActiveDepartments
 } = useRssFeed()
 
 const { getDefaultDepartments, getDepartment } = useDepartments()
@@ -219,9 +221,18 @@ function handleSelectionChange({ selected, count }) {
 
 async function handleApply({ selected, departments }) {
   try {
+    // Update the local state first
+    selectedDepartments.value = [...selected]
+    
+    // Save to localStorage and set as active departments
+    setActiveDepartments(selected, true) // true = persist to localStorage
+    
+    // Fetch feeds for the selected departments
     await fetchFeeds(selected)
     
     showSuccess(`${departments.length}개 게시판이 적용되었습니다`)
+    
+    console.log('게시판 관리: 설정 저장됨:', selected)
     
     // Navigate back to home after successful application
     setTimeout(() => {
@@ -271,18 +282,30 @@ function formatLastUpdate(date) {
 
 // Lifecycle
 onMounted(async () => {
-  // Initialize with default departments if none selected
-  if (selectedDepartments.value.length === 0) {
-    // Use preset default instead of getDefaultDepartments to ensure consistency
-    selectedDepartments.value = [...presets.default]
-  }
-  
-  // Load initial data for stats - only if not already loaded
-  if (selectedDepartments.value.length > 0) {
-    const needsLoading = selectedDepartments.value.some(deptId => !allItems.value.some(item => item.departmentId === deptId))
-    if (needsLoading) {
-      await fetchFeeds(selectedDepartments.value)
+  // Load user's saved department selection from localStorage
+  try {
+    const savedDepartments = await getSelectedDepartments()
+    
+    if (savedDepartments && savedDepartments.length > 0) {
+      selectedDepartments.value = [...savedDepartments]
+      console.log('게시판 관리: 저장된 설정 로드됨:', savedDepartments)
+    } else {
+      // Fallback to preset defaults only if no saved departments
+      selectedDepartments.value = [...presets.default]
+      console.log('게시판 관리: 기본 설정 사용됨')
     }
+    
+    // Load initial data for stats - only if not already loaded
+    if (selectedDepartments.value.length > 0) {
+      const needsLoading = selectedDepartments.value.some(deptId => !allItems.value.some(item => item.departmentId === deptId))
+      if (needsLoading) {
+        await fetchFeeds(selectedDepartments.value)
+      }
+    }
+  } catch (error) {
+    console.error('게시판 관리: 설정 로드 실패:', error)
+    // Fallback to defaults on error
+    selectedDepartments.value = [...presets.default]
   }
 })
 

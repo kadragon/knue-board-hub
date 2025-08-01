@@ -10,10 +10,13 @@ export default defineConfig({
     {
       getCSS: () => `
         :root {
-          --knue-primary: #0066cc;
-          --knue-secondary: #004499;
-          --knue-accent: #3399ff;
-          --gray-50: #f8f9fa;
+          --knue-primary: #072D6E;
+          --knue-secondary: #03519C;
+          --knue-accent: #FFB800;
+          --knue-surface: #FAFAFD;
+          --transition-duration: 0.25s;
+          --transition-timing: ease-out;
+          --gray-50: #FAFAFD;
           --gray-100: #e9ecef;
           --gray-200: #dee2e6;
           --gray-300: #ced4da;
@@ -47,6 +50,61 @@ export default defineConfig({
           --red-200: #fecaca;
           --red-700: #b91c1c;
         }
+
+        /* Global accessibility and motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+
+        /* Focus management */
+        *:focus-visible {
+          outline: 2px solid var(--knue-accent);
+          outline-offset: 2px;
+        }
+
+        /* Skip link for accessibility */
+        .skip-link {
+          position: absolute;
+          top: -40px;
+          left: 6px;
+          background: var(--knue-primary);
+          color: white;
+          padding: 8px;
+          text-decoration: none;
+          border-radius: 4px;
+          z-index: 1000;
+        }
+
+        .skip-link:focus {
+          top: 6px;
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+          :root {
+            --knue-primary: #000000;
+            --knue-secondary: #1a1a1a;
+            --knue-accent: #FFD700;
+          }
+          
+          .card-base,
+          .btn-base,
+          .badge-department {
+            border: 2px solid currentColor !important;
+          }
+          
+          .text-gray-500,
+          .text-gray-600 {
+            color: #000000 !important;
+          }
+        }
       `,
     },
   ],
@@ -54,9 +112,10 @@ export default defineConfig({
   theme: {
     colors: {
       knue: {
-        primary: "#0066cc",
-        secondary: "#004499",
-        accent: "#3399ff",
+        primary: "#072D6E",
+        secondary: "#03519C",
+        accent: "#FFB800",
+        surface: "#FAFAFD",
         gray: {
           50: "#f8f9fa",
           100: "#e9ecef",
@@ -71,7 +130,7 @@ export default defineConfig({
         },
       },
       department: {
-        main: "#0066cc",
+        main: "#072D6E",
         academic: "#28a745",
         employment: "#17a2b8",
         scholarship: "#ffc107",
@@ -95,48 +154,58 @@ export default defineConfig({
     },
     fontFamily: {
       sans: [
+        "Pretendard Variable",
+        "Pretendard",
         "-apple-system",
         "BlinkMacSystemFont",
         "Apple SD Gothic Neo",
-        "Pretendard Variable",
-        "Pretendard",
-        "Roboto",
         "Noto Sans KR",
+        "Roboto",
         "Segoe UI",
         "sans-serif",
       ],
     },
+    lineHeight: {
+      'tight': '1.4',
+      'normal': '1.6',
+      'relaxed': '1.8',
+    },
   },
   shortcuts: {
-    // Layout shortcuts
-    "container-mobile": "max-w-screen-lg mx-auto px-4 sm:px-6",
+    // Layout shortcuts (STYLE.md grid aligned)
+    "container-mobile": "max-w-screen-lg mx-auto px-4 sm:px-6 lg:px-8",
     "container-safe": "pl-safe-left pr-safe-right",
-    "section-spacing": "py-4 sm:py-6",
+    "section-spacing": "py-4 sm:py-6 lg:py-8",
+    "grid-responsive-knue": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8",
+    "spacing-mobile": "px-4 py-4",
+    "spacing-tablet": "px-6 py-6", 
+    "spacing-desktop": "px-8 py-8",
 
-    // Card shortcuts
+    // Card shortcuts (STYLE.md aligned + enhanced separation)
     "card-base":
-      "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700",
+      "bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-300 dark:border-gray-600",
     "card-hover":
-      "hover:shadow-md hover:scale-102 transition-all duration-200 ease-out",
+      "hover:shadow-lg hover:border-knue-primary/30 hover:-translate-y-1 transition-all duration-250 ease-out",
     "card-touch": "active:scale-98 touch-manipulation",
-    "card-rss": "card-base card-hover card-touch p-4 mb-3",
+    "card-rss": "card-base card-hover card-touch p-4 mb-3 md:p-5 md:mb-4 shadow-md",
 
-    // Button shortcuts
+    // Button shortcuts (STYLE.md aligned)
     "btn-base":
-      "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 ease-out touch-manipulation",
+      "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-250 ease-out touch-manipulation focus:outline-none focus:ring-2 focus:ring-knue-accent focus:ring-offset-2",
     "btn-primary":
       "btn-base bg-knue-primary text-white hover:bg-knue-secondary active:scale-95 shadow-sm",
     "btn-secondary":
-      "btn-base bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95",
+      "btn-base bg-knue-surface border border-gray-200 text-knue-primary hover:bg-gray-50 hover:border-knue-primary active:scale-95",
     "btn-touch": "min-h-11 px-4 py-2 min-w-11",
     "btn-icon": "btn-base p-2 rounded-full",
 
-    // Text shortcuts
-    "text-title":
-      "text-lg font-semibold text-gray-900 dark:text-gray-100 leading-tight",
-    "text-subtitle": "text-base font-medium text-gray-700 dark:text-gray-300",
-    "text-body": "text-sm text-gray-600 dark:text-gray-400 leading-relaxed",
-    "text-caption": "text-xs text-gray-500 dark:text-gray-500",
+    // Text shortcuts (STYLE.md aligned)
+    "text-headline": "text-2xl font-bold text-knue-primary leading-tight",
+    "text-title": "text-lg font-semibold text-knue-primary leading-normal",
+    "text-subtitle": "text-base font-medium text-gray-700 dark:text-gray-300 leading-normal",
+    "text-body": "text-base text-gray-600 dark:text-gray-400 leading-normal",
+    "text-caption": "text-sm text-gray-500 dark:text-gray-500 leading-normal",
+    "text-small": "text-xs text-gray-500 dark:text-gray-500",
     "text-link":
       "text-knue-primary hover:text-knue-secondary underline-offset-2",
 
@@ -158,11 +227,14 @@ export default defineConfig({
     "badge-library":
       "badge-department bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
 
-    // Loading states
+    // Loading states (STYLE.md aligned)
     skeleton: "animate-pulse bg-gray-200 dark:bg-gray-700 rounded",
-    "skeleton-text": "skeleton h-4 w-full",
-    "skeleton-title": "skeleton h-5 w-3/4",
+    "skeleton-text": "skeleton h-4 w-full mb-2",
+    "skeleton-title": "skeleton h-6 w-3/4 mb-3",
+    "skeleton-subtitle": "skeleton h-4 w-1/2 mb-2",
     "skeleton-circle": "skeleton rounded-full",
+    "skeleton-rss-card": "skeleton h-32 w-full rounded-xl mb-3",
+    "skeleton-avatar": "skeleton w-10 h-10 rounded-full",
 
     // Touch feedback
     "touch-feedback":
@@ -178,6 +250,9 @@ export default defineConfig({
     "grid-responsive": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4",
     "flex-center": "flex items-center justify-center",
     "flex-between": "flex items-center justify-between",
+    
+    // Accessibility
+    "sr-only": "absolute w-1 h-1 p-0 -m-1 overflow-hidden whitespace-nowrap border-0",
   },
   rules: [
     // Custom touch target rule

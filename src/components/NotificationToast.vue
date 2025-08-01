@@ -366,10 +366,12 @@ onUnmounted(() => {
 .toast-action-btn.primary {
   background: theme('colors.knue.primary');
   color: white;
+  border-radius: 0.5rem;
 }
 
 .toast-action-btn.primary:hover {
   background: theme('colors.knue.secondary');
+  transform: translateY(-1px);
 }
 
 .toast-action-btn.secondary {
