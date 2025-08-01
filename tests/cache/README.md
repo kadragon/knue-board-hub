@@ -5,14 +5,17 @@ This directory contains test files for the KNUE Board Hub cache implementation.
 ## Test Files
 
 ### `backend-test.js`
+
 Node.js-based backend test that validates the cache implementation logic without browser dependencies.
 
 **Usage:**
+
 ```bash
 node tests/cache/backend-test.js
 ```
 
 **Features:**
+
 - Tests basic cache operations (set/get/delete)
 - TTL expiration validation
 - Category-based TTL testing
@@ -24,18 +27,22 @@ node tests/cache/backend-test.js
 - Error handling for corrupted data
 
 **Requirements:**
+
 - Node.js with ES modules support
 - Access to `src/services/cacheManager.js`
 
 ### `browser-test.html`
+
 Interactive browser-based test page with a visual interface for testing cache functionality.
 
 **Usage:**
+
 1. Start the development server (`npm run dev`)
 2. Open `tests/cache/browser-test.html` in a browser
 3. Click "🚀 Run All Tests" to execute the test suite
 
 **Features:**
+
 - Real browser localStorage testing
 - Visual test progress and results
 - Cache statistics display
@@ -45,15 +52,18 @@ Interactive browser-based test page with a visual interface for testing cache fu
 - Interactive controls for cache management
 
 ### `console-test.js`
+
 Browser console script for manual testing of cache operations during development.
 
 **Usage:**
+
 1. Start the development server (`npm run dev`)
 2. Open the browser developer console
 3. Copy and paste the contents of `console-test.js`
 4. Run `runAllTests()` in the console
 
 **Features:**
+
 - Manual cache operation testing
 - Department cache validation
 - RSS cache validation
@@ -63,26 +73,31 @@ Browser console script for manual testing of cache operations during development
 ## Test Categories
 
 ### Basic Operations
+
 - Set/get/delete operations
 - Data integrity validation
 - Cache key management
 
 ### TTL & Expiration
+
 - Time-to-live validation
 - Category-based TTL testing
 - Expired data handling
 
 ### Performance
+
 - Write/read operation speed
 - Large data handling
 - Memory usage optimization
 
 ### Error Handling
+
 - Corrupted data recovery
 - Storage quota handling
 - Network failure simulation
 
 ### Integration
+
 - App workflow testing
 - Offline behavior validation
 - Cross-component cache usage
@@ -90,6 +105,7 @@ Browser console script for manual testing of cache operations during development
 ## Running Tests
 
 ### Complete Test Suite
+
 ```bash
 # Backend tests
 node tests/cache/backend-test.js
@@ -100,6 +116,7 @@ npm run dev
 ```
 
 ### Individual Test Components
+
 ```bash
 # Performance testing only
 node -e "require('./tests/cache/backend-test.js').runCacheTests()"
@@ -121,16 +138,19 @@ Tests use the `knue-board-hub:` prefix for localStorage keys to match the produc
 ## Troubleshooting
 
 ### Backend Test Issues
+
 - Ensure Node.js supports ES modules
 - Verify `src/services/cacheManager.js` exists
 - Check file permissions
 
 ### Browser Test Issues
+
 - Start development server first (`npm run dev`)
 - Check browser console for errors
 - Ensure localStorage is enabled
 
 ### Performance Issues
+
 - Clear browser cache before testing
 - Close other tabs to reduce memory pressure
 - Test on different browsers for comparison

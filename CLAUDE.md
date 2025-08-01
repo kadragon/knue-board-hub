@@ -196,6 +196,7 @@ defineProps({
 **Development Proxy Configuration:**
 
 - **Worker endpoints** (`^/api/(?!rss).*`) → `http://localhost:8787`
+
   - `GET /api/departments` - Get all departments
   - `GET /api/departments/:id` - Get specific department
   - `GET /api/rss/items` - Get RSS items with filtering

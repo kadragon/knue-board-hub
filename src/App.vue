@@ -14,15 +14,19 @@
 
             <!-- Actions (only on home page) -->
             <div v-if="route.name === 'home'" class="nav-home-controls">
-              <button 
+              <button
                 @click="handleRefresh"
                 class="nav-refresh-btn"
                 :disabled="isRefreshing"
                 title="새로고침"
               >
-                <i 
+                <i
                   class="w-5 h-5"
-                  :class="isRefreshing ? 'i-tabler-loader-2 animate-spin' : 'i-tabler-refresh'"
+                  :class="
+                    isRefreshing
+                      ? 'i-tabler-loader-2 animate-spin'
+                      : 'i-tabler-refresh'
+                  "
                 />
               </button>
             </div>
@@ -47,7 +51,7 @@
               class="mobile-menu-toggle mobile-only"
               aria-label="메뉴 열기/닫기"
             >
-              <i 
+              <i
                 class="w-6 h-6 transition-transform duration-200"
                 :class="mobileMenuOpen ? 'i-tabler-x' : 'i-tabler-menu-2'"
               />
@@ -56,7 +60,11 @@
 
           <!-- Mobile Navigation Menu -->
           <Transition name="mobile-menu">
-            <div v-if="mobileMenuOpen" class="mobile-nav-overlay mobile-only" @click="closeMobileMenu">
+            <div
+              v-if="mobileMenuOpen"
+              class="mobile-nav-overlay mobile-only"
+              @click="closeMobileMenu"
+            >
               <div class="mobile-nav" @click.stop>
                 <div class="mobile-nav-content">
                   <router-link
@@ -70,7 +78,9 @@
                     <i :class="route.meta.icon" class="w-5 h-5 mr-3" />
                     <div class="link-content">
                       <span class="link-title">{{ route.meta.title }}</span>
-                      <span class="link-description">{{ route.meta.description }}</span>
+                      <span class="link-description">{{
+                        route.meta.description
+                      }}</span>
                     </div>
                   </router-link>
                 </div>
@@ -85,8 +95,8 @@
         <!-- Route Transition -->
         <router-view v-slot="{ Component, route }">
           <Transition :name="transitionName" mode="out-in">
-            <component 
-              :is="Component" 
+            <component
+              :is="Component"
               :key="route.path"
               class="route-component"
             />
@@ -110,7 +120,7 @@
     </div>
 
     <!-- Global Components -->
-    <NotificationToast 
+    <NotificationToast
       :position="notificationPosition"
       :max-visible="5"
       :pause-on-hover="true"
@@ -140,11 +150,15 @@
             class="retry-button"
             :disabled="retryingConnection"
           >
-            <i 
+            <i
               class="w-4 h-4 mr-1"
-              :class="retryingConnection ? 'i-tabler-loader-2 animate-spin' : 'i-tabler-refresh'"
+              :class="
+                retryingConnection
+                  ? 'i-tabler-loader-2 animate-spin'
+                  : 'i-tabler-refresh'
+              "
             />
-            {{ retryingConnection ? '재시도 중...' : '재시도' }}
+            {{ retryingConnection ? "재시도 중..." : "재시도" }}
           </button>
         </div>
       </div>
@@ -158,13 +172,13 @@
             <i class="i-tabler-download w-5 h-5 mr-2 text-knue-primary" />
             <div class="pwa-text">
               <span class="pwa-title">앱으로 설치하기</span>
-              <span class="pwa-description">홈 화면에 추가하여 더 편리하게 사용하세요</span>
+              <span class="pwa-description"
+                >홈 화면에 추가하여 더 편리하게 사용하세요</span
+              >
             </div>
           </div>
           <div class="pwa-actions">
-            <button @click="installPwa" class="pwa-install-btn">
-              설치
-            </button>
+            <button @click="installPwa" class="pwa-install-btn">설치</button>
             <button @click="dismissPwaPrompt" class="pwa-dismiss-btn">
               <i class="i-tabler-x w-4 h-4" />
             </button>
@@ -172,236 +186,311 @@
         </div>
       </div>
     </Transition>
-    
+
     <!-- Cache Debugger (only in development) -->
     <CacheDebugger v-if="isDevelopment" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { getNavRoutes, isCurrentRoute } from './router/index.js'
-import { useGlobalNotifications } from './composables/useNotifications.js'
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { getNavRoutes, isCurrentRoute } from "./router/index.js";
+import { useGlobalNotifications } from "./composables/useNotifications.js";
 
 // Components
-import NotificationToast from './components/NotificationToast.vue'
-import LoadingSpinner from './components/LoadingSpinner.vue'
-import CacheDebugger from './components/CacheDebugger.vue'
+import NotificationToast from "./components/NotificationToast.vue";
+import LoadingSpinner from "./components/LoadingSpinner.vue";
+import CacheDebugger from "./components/CacheDebugger.vue";
 
 // Router
-const router = useRouter()
-const route = useRoute()
+const router = useRouter();
+const route = useRoute();
 
 // Composables
-const { showSuccess, showWarning, showError } = useGlobalNotifications()
+const { showSuccess, showWarning, showError } = useGlobalNotifications();
 
 // State
-const mobileMenuOpen = ref(false)
-const isOnline = ref(navigator.onLine)
-const globalLoading = ref(false)
-const showPwaPrompt = ref(false)
-const pwaPromptEvent = ref(null)
-const retryingConnection = ref(false)
-const isRefreshing = ref(false)
+const mobileMenuOpen = ref(false);
+const isOnline = ref(navigator.onLine);
+const globalLoading = ref(false);
+const showPwaPrompt = ref(false);
+const pwaPromptEvent = ref(null);
+const retryingConnection = ref(false);
+const isRefreshing = ref(false);
 
 // Navigation
-const navRoutes = computed(() => getNavRoutes())
-const bottomNavRoutes = computed(() => 
-  navRoutes.value.filter(route => ['home', 'departments', 'settings'].includes(route.name))
-)
+const navRoutes = computed(() => getNavRoutes());
+const bottomNavRoutes = computed(() =>
+  navRoutes.value.filter((route) =>
+    ["home", "departments", "settings"].includes(route.name)
+  )
+);
 
 // Layout computed properties
-const showNavigation = computed(() => !route.meta?.hideNavigation)
-const showBottomNav = computed(() => !route.meta?.hideBottomNav)
-const isRetrying = computed(() => !isOnline.value)
-const showOfflineBanner = computed(() => !isOnline.value)
+const showNavigation = computed(() => !route.meta?.hideNavigation);
+const showBottomNav = computed(() => !route.meta?.hideBottomNav);
+const isRetrying = computed(() => !isOnline.value);
+const showOfflineBanner = computed(() => !isOnline.value);
 
 const layoutClass = computed(() => {
-  const classes = []
-  
-  if (mobileMenuOpen.value) classes.push('mobile-menu-open')
-  if (!isOnline.value) classes.push('offline-mode')
-  if (route.meta?.fullscreen) classes.push('fullscreen-layout')
-  
-  return classes
-})
+  const classes = [];
 
-const isDevelopment = computed(() => import.meta.env.DEV)
+  if (mobileMenuOpen.value) classes.push("mobile-menu-open");
+  if (!isOnline.value) classes.push("offline-mode");
+  if (route.meta?.fullscreen) classes.push("fullscreen-layout");
+
+  return classes;
+});
+
+const isDevelopment = computed(() => import.meta.env.DEV);
 
 const mainClass = computed(() => {
-  const classes = []
-  
-  if (showBottomNav.value) classes.push('with-bottom-nav')
-  if (!showNavigation.value) classes.push('no-header')
-  
-  return classes
-})
+  const classes = [];
+
+  if (showBottomNav.value) classes.push("with-bottom-nav");
+  if (!showNavigation.value) classes.push("no-header");
+
+  return classes;
+});
 
 const transitionName = computed(() => {
   // Determine transition based on route meta or navigation direction
-  if (route.meta?.transition) return route.meta.transition
-  
+  if (route.meta?.transition) return route.meta.transition;
+
   // Default transitions
   const routeDepth = {
-    'home': 1,
-    'departments': 2,
-    'settings': 3,
-    'about': 4
-  }
-  
-  const fromDepth = routeDepth[router.previousRoute?.name] || 1
-  const toDepth = routeDepth[route.name] || 1
-  
-  return toDepth > fromDepth ? 'slide-left' : 'slide-right'
-})
+    home: 1,
+    departments: 2,
+    settings: 3,
+    about: 4,
+  };
+
+  const fromDepth = routeDepth[router.previousRoute?.name] || 1;
+  const toDepth = routeDepth[route.name] || 1;
+
+  return toDepth > fromDepth ? "slide-left" : "slide-right";
+});
 
 const notificationPosition = computed(() => {
   // Use different position on mobile
-  return window.innerWidth < 768 ? 'top-center' : 'top-right'
-})
+  return window.innerWidth < 768 ? "top-center" : "top-right";
+});
 
 // Methods
 function toggleMobileMenu() {
-  mobileMenuOpen.value = !mobileMenuOpen.value
-  
+  mobileMenuOpen.value = !mobileMenuOpen.value;
+
   // Prevent body scroll when menu is open
-  document.body.style.overflow = mobileMenuOpen.value ? 'hidden' : ''
+  document.body.style.overflow = mobileMenuOpen.value ? "hidden" : "";
 }
 
 function closeMobileMenu() {
-  mobileMenuOpen.value = false
-  document.body.style.overflow = ''
+  mobileMenuOpen.value = false;
+  document.body.style.overflow = "";
 }
 
 async function handleRefresh() {
-  if (isRefreshing.value) return
-  
-  isRefreshing.value = true
-  
+  if (isRefreshing.value) return;
+
+  isRefreshing.value = true;
+  let refreshTimeout;
+
   try {
-    // Emit a custom event that RssFeedList can listen to
-    window.dispatchEvent(new CustomEvent('app-refresh'))
-    
-    // Show success after a delay to allow components to refresh
-    setTimeout(() => {
-      showSuccess('게시판이 새로고침되었습니다')
-    }, 500)
+    // Create a promise-based refresh coordination system
+    const refreshCoordinationPromise = new Promise((resolve, reject) => {
+      let completedComponents = new Set();
+      let expectedComponents = new Set();
+
+      // Set a reasonable timeout as fallback (10 seconds)
+      refreshTimeout = setTimeout(() => {
+        reject(
+          new Error("Refresh timeout - some components may still be loading")
+        );
+      }, 10000);
+
+      // Listen for component registration
+      const handleComponentRegister = (event) => {
+        expectedComponents.add(event.detail.componentId);
+      };
+
+      // Listen for component completion
+      const handleComponentComplete = (event) => {
+        const { componentId, success, error } = event.detail;
+
+        if (success) {
+          completedComponents.add(componentId);
+        } else if (error) {
+          cleanup();
+          reject(new Error(`Component ${componentId} failed: ${error}`));
+          return;
+        }
+
+        // Check if all registered components have completed
+        if (
+          completedComponents.size === expectedComponents.size &&
+          expectedComponents.size > 0
+        ) {
+          cleanup();
+          resolve();
+        }
+      };
+
+      // Cleanup function
+      const cleanup = () => {
+        window.removeEventListener(
+          "app-refresh-register",
+          handleComponentRegister
+        );
+        window.removeEventListener(
+          "app-refresh-complete",
+          handleComponentComplete
+        );
+        if (refreshTimeout) {
+          clearTimeout(refreshTimeout);
+          refreshTimeout = null;
+        }
+      };
+
+      // Set up event listeners
+      window.addEventListener("app-refresh-register", handleComponentRegister);
+      window.addEventListener("app-refresh-complete", handleComponentComplete);
+
+      // Start the refresh process
+      window.dispatchEvent(
+        new CustomEvent("app-refresh", {
+          detail: { coordinationMode: true },
+        })
+      );
+
+      // If no components register within 1 second, assume no components need refreshing
+      setTimeout(() => {
+        if (expectedComponents.size === 0) {
+          cleanup();
+          resolve();
+        }
+      }, 1000);
+    });
+
+    // Wait for all components to complete or timeout
+    await refreshCoordinationPromise;
+    showSuccess("게시판이 새로고침되었습니다");
   } catch (error) {
-    showError('새로고침 중 오류가 발생했습니다')
+    console.error("Refresh coordination error:", error);
+    showError(error.message || "새로고침 중 오류가 발생했습니다");
   } finally {
-    setTimeout(() => {
-      isRefreshing.value = false
-    }, 1000)
+    if (refreshTimeout) {
+      clearTimeout(refreshTimeout);
+    }
+    isRefreshing.value = false;
   }
 }
 
 async function retryConnection() {
-  if (retryingConnection.value) return
-  
-  retryingConnection.value = true
-  
+  if (retryingConnection.value) return;
+
+  retryingConnection.value = true;
+
   try {
     // Test connection by trying to fetch a small resource
-    const response = await fetch('/favicon.ico', { 
-      method: 'HEAD',
-      cache: 'no-cache'
-    })
-    
+    const response = await fetch("/favicon.ico", {
+      method: "HEAD",
+      cache: "no-cache",
+    });
+
     if (response.ok) {
-      isOnline.value = true
-      showSuccess('인터넷 연결이 복구되었습니다')
+      isOnline.value = true;
+      showSuccess("인터넷 연결이 복구되었습니다");
     } else {
-      throw new Error('Connection test failed')
+      throw new Error("Connection test failed");
     }
   } catch (error) {
-    showError('인터넷 연결을 확인할 수 없습니다')
+    showError("인터넷 연결을 확인할 수 없습니다");
   } finally {
-    retryingConnection.value = false
+    retryingConnection.value = false;
   }
 }
 
 function handleOnlineStatus() {
-  isOnline.value = navigator.onLine
-  
+  isOnline.value = navigator.onLine;
+
   if (isOnline.value) {
-    showSuccess('인터넷 연결이 복구되었습니다')
+    showSuccess("인터넷 연결이 복구되었습니다");
   } else {
-    showWarning('인터넷 연결이 끊어졌습니다')
+    showWarning("인터넷 연결이 끊어졌습니다");
   }
 }
 
-
 // PWA functionality
 function handlePwaPrompt(event) {
-  event.preventDefault()
-  pwaPromptEvent.value = event
-  showPwaPrompt.value = true
+  event.preventDefault();
+  pwaPromptEvent.value = event;
+  showPwaPrompt.value = true;
 }
 
 async function installPwa() {
-  if (!pwaPromptEvent.value) return
-  
+  if (!pwaPromptEvent.value) return;
+
   try {
-    const result = await pwaPromptEvent.value.prompt()
-    
-    if (result.outcome === 'accepted') {
-      showSuccess('앱이 설치되었습니다')
+    const result = await pwaPromptEvent.value.prompt();
+
+    if (result.outcome === "accepted") {
+      showSuccess("앱이 설치되었습니다");
     }
-    
-    showPwaPrompt.value = false
-    pwaPromptEvent.value = null
+
+    showPwaPrompt.value = false;
+    pwaPromptEvent.value = null;
   } catch (error) {
-    showError('앱 설치에 실패했습니다')
-    console.error('PWA installation failed:', error)
+    showError("앱 설치에 실패했습니다");
+    console.error("PWA installation failed:", error);
   }
 }
 
 function dismissPwaPrompt() {
-  showPwaPrompt.value = false
-  pwaPromptEvent.value = null
-  
+  showPwaPrompt.value = false;
+  pwaPromptEvent.value = null;
+
   // Remember dismissal for 30 days
-  localStorage.setItem('pwa-prompt-dismissed', Date.now().toString())
+  localStorage.setItem("pwa-prompt-dismissed", Date.now().toString());
 }
 
 function shouldShowPwaPrompt() {
-  const dismissed = localStorage.getItem('pwa-prompt-dismissed')
+  const dismissed = localStorage.getItem("pwa-prompt-dismissed");
   if (dismissed) {
-    const dismissedTime = parseInt(dismissed, 10)
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000)
-    return dismissedTime < thirtyDaysAgo
+    const dismissedTime = parseInt(dismissed, 10);
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return dismissedTime < thirtyDaysAgo;
   }
-  return true
+  return true;
 }
 
 // Route change handling
 function handleRouteChange() {
   // Close mobile menu on route change
-  closeMobileMenu()
-  
+  closeMobileMenu();
+
   // Scroll to top on route change (except for same route with different params)
   if (route.name !== router.previousRoute?.name) {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 
 // Error handling
 function handleGlobalError(error) {
-  console.error('Global error:', error)
-  showError('예상치 못한 오류가 발생했습니다')
+  console.error("Global error:", error);
+  showError("예상치 못한 오류가 발생했습니다");
 }
 
 // Keyboard shortcuts
 function handleKeydown(event) {
   // ESC key closes mobile menu
-  if (event.key === 'Escape' && mobileMenuOpen.value) {
-    closeMobileMenu()
+  if (event.key === "Escape" && mobileMenuOpen.value) {
+    closeMobileMenu();
   }
-  
+
   // Ctrl/Cmd + K for quick navigation (future feature)
-  if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-    event.preventDefault()
+  if ((event.ctrlKey || event.metaKey) && event.key === "k") {
+    event.preventDefault();
     // Could open a command palette or search
   }
 }
@@ -409,48 +498,53 @@ function handleKeydown(event) {
 // Lifecycle
 onMounted(() => {
   // Set up event listeners
-  window.addEventListener('online', handleOnlineStatus)
-  window.addEventListener('offline', handleOnlineStatus)
-  window.addEventListener('beforeinstallprompt', handlePwaPrompt)
-  window.addEventListener('keydown', handleKeydown)
-  window.addEventListener('error', handleGlobalError)
-  
+  window.addEventListener("online", handleOnlineStatus);
+  window.addEventListener("offline", handleOnlineStatus);
+  window.addEventListener("beforeinstallprompt", handlePwaPrompt);
+  window.addEventListener("keydown", handleKeydown);
+  window.addEventListener("error", handleGlobalError);
+
   // Check PWA prompt eligibility
-  if (shouldShowPwaPrompt() && 'serviceWorker' in navigator) {
+  if (shouldShowPwaPrompt() && "serviceWorker" in navigator) {
     // Show PWA prompt after some time
     setTimeout(() => {
       if (!pwaPromptEvent.value) {
         // Fallback for browsers that don't fire beforeinstallprompt
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-        if (!isStandalone && !localStorage.getItem('pwa-prompt-dismissed')) {
-          showPwaPrompt.value = true
+        const isStandalone = window.matchMedia(
+          "(display-mode: standalone)"
+        ).matches;
+        if (!isStandalone && !localStorage.getItem("pwa-prompt-dismissed")) {
+          showPwaPrompt.value = true;
         }
       }
-    }, 30000) // Show after 30 seconds
+    }, 30000); // Show after 30 seconds
   }
-  
+
   // Initialize service worker
-  if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('Service Worker registered'))
-      .catch(error => console.error('Service Worker registration failed:', error))
+  if ("serviceWorker" in navigator && import.meta.env.PROD) {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then(() => console.log("Service Worker registered"))
+      .catch((error) =>
+        console.error("Service Worker registration failed:", error)
+      );
   }
-})
+});
 
 onUnmounted(() => {
   // Clean up event listeners
-  window.removeEventListener('online', handleOnlineStatus)
-  window.removeEventListener('offline', handleOnlineStatus)
-  window.removeEventListener('beforeinstallprompt', handlePwaPrompt)
-  window.removeEventListener('keydown', handleKeydown)
-  window.removeEventListener('error', handleGlobalError)
-  
+  window.removeEventListener("online", handleOnlineStatus);
+  window.removeEventListener("offline", handleOnlineStatus);
+  window.removeEventListener("beforeinstallprompt", handlePwaPrompt);
+  window.removeEventListener("keydown", handleKeydown);
+  window.removeEventListener("error", handleGlobalError);
+
   // Reset body overflow
-  document.body.style.overflow = ''
-})
+  document.body.style.overflow = "";
+});
 
 // Watch route changes
-watch(route, handleRouteChange)
+watch(route, handleRouteChange);
 
 // Expose methods for debugging
 if (import.meta.env.DEV) {
@@ -458,8 +552,10 @@ if (import.meta.env.DEV) {
     toggleMobileMenu,
     retryConnection,
     installPwa,
-    showPwaPrompt: () => { showPwaPrompt.value = true }
-  }
+    showPwaPrompt: () => {
+      showPwaPrompt.value = true;
+    },
+  };
 }
 </script>
 
@@ -469,7 +565,7 @@ if (import.meta.env.DEV) {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: theme('colors.gray.50');
+  background: theme("colors.gray.50");
 }
 
 .app-layout {
@@ -482,7 +578,7 @@ if (import.meta.env.DEV) {
 /* Header */
 .app-header {
   background: white;
-  border-bottom: 1px solid theme('colors.gray.200');
+  border-bottom: 1px solid theme("colors.gray.200");
   position: sticky;
   top: 0;
   z-index: 40;
@@ -507,7 +603,7 @@ if (import.meta.env.DEV) {
   display: flex;
   align-items: center;
   text-decoration: none;
-  color: theme('colors.gray.900');
+  color: theme("colors.gray.900");
   font-weight: 700;
   font-size: 1.125rem;
   transition: color 0.2s ease;
@@ -515,7 +611,7 @@ if (import.meta.env.DEV) {
 }
 
 .nav-brand:hover {
-  color: theme('colors.knue.primary');
+  color: theme("colors.knue.primary");
 }
 
 .brand-text {
@@ -540,7 +636,7 @@ if (import.meta.env.DEV) {
   height: 2.5rem;
   border: none;
   background: transparent;
-  color: theme('colors.gray.600');
+  color: theme("colors.gray.600");
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -548,15 +644,14 @@ if (import.meta.env.DEV) {
 }
 
 .nav-refresh-btn:hover:not(:disabled) {
-  background: theme('colors.gray.100');
-  color: theme('colors.knue.primary');
+  background: theme("colors.gray.100");
+  color: theme("colors.knue.primary");
 }
 
 .nav-refresh-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
-
 
 /* Desktop Navigation */
 .nav-menu {
@@ -570,7 +665,7 @@ if (import.meta.env.DEV) {
   align-items: center;
   padding: 0.5rem 1rem;
   text-decoration: none;
-  color: theme('colors.gray.600');
+  color: theme("colors.gray.600");
   font-weight: 500;
   border-radius: 0.5rem;
   transition: all 0.2s ease;
@@ -578,13 +673,13 @@ if (import.meta.env.DEV) {
 }
 
 .nav-link:hover {
-  color: theme('colors.knue.primary');
-  background: theme('colors.blue.50');
+  color: theme("colors.knue.primary");
+  background: theme("colors.blue.50");
 }
 
 .nav-active {
-  color: theme('colors.knue.primary');
-  background: theme('colors.blue.100');
+  color: theme("colors.knue.primary");
+  background: theme("colors.blue.100");
 }
 
 /* Mobile Menu Toggle */
@@ -596,15 +691,15 @@ if (import.meta.env.DEV) {
   height: 2.5rem;
   border: none;
   background: transparent;
-  color: theme('colors.gray.600');
+  color: theme("colors.gray.600");
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .mobile-menu-toggle:hover {
-  background: theme('colors.gray.100');
-  color: theme('colors.gray.900');
+  background: theme("colors.gray.100");
+  color: theme("colors.gray.900");
 }
 
 /* Mobile Navigation Overlay */
@@ -626,9 +721,12 @@ if (import.meta.env.DEV) {
   left: 0;
   right: 0;
   background: white;
-  border-bottom: 1px solid theme('colors.gray.200');
+  border-bottom: 1px solid theme("colors.gray.200");
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  max-height: calc(100vh - 3.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  max-height: calc(
+    100vh - 3.5rem - env(safe-area-inset-top, 0px) -
+      env(safe-area-inset-bottom, 0px)
+  );
   overflow-y: auto;
 }
 
@@ -644,20 +742,20 @@ if (import.meta.env.DEV) {
   align-items: center;
   padding: 1rem;
   text-decoration: none;
-  color: theme('colors.gray.700');
+  color: theme("colors.gray.700");
   border-radius: 0.75rem;
   transition: all 0.2s ease;
   margin-bottom: 0.5rem;
 }
 
 .mobile-nav-link:hover {
-  background: theme('colors.blue.50');
-  color: theme('colors.knue.primary');
+  background: theme("colors.blue.50");
+  color: theme("colors.knue.primary");
 }
 
 .mobile-nav-link.nav-active {
-  background: theme('colors.blue.100');
-  color: theme('colors.knue.primary');
+  background: theme("colors.blue.100");
+  color: theme("colors.knue.primary");
 }
 
 .link-content {
@@ -673,7 +771,7 @@ if (import.meta.env.DEV) {
 
 .link-description {
   font-size: 0.875rem;
-  color: theme('colors.gray.500');
+  color: theme("colors.gray.500");
 }
 
 /* Main Content */
@@ -697,7 +795,7 @@ if (import.meta.env.DEV) {
   left: 0;
   right: 0;
   background: white;
-  border-top: 1px solid theme('colors.gray.200');
+  border-top: 1px solid theme("colors.gray.200");
   display: flex;
   justify-content: space-around;
   padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
@@ -711,19 +809,19 @@ if (import.meta.env.DEV) {
   gap: 0.25rem;
   padding: 0.5rem;
   text-decoration: none;
-  color: theme('colors.gray.500');
+  color: theme("colors.gray.500");
   border-radius: 0.5rem;
   transition: all 0.2s ease;
   min-width: 4rem;
 }
 
 .bottom-nav-item:hover {
-  color: theme('colors.knue.primary');
-  background: theme('colors.blue.50');
+  color: theme("colors.knue.primary");
+  background: theme("colors.blue.50");
 }
 
 .bottom-nav-item.nav-active {
-  color: theme('colors.knue.primary');
+  color: theme("colors.knue.primary");
 }
 
 .nav-label {
@@ -757,7 +855,7 @@ if (import.meta.env.DEV) {
   top: 0;
   left: 0;
   right: 0;
-  background: theme('colors.orange.500');
+  background: theme("colors.orange.500");
   color: white;
   z-index: 50;
   padding: 0.75rem;
@@ -807,7 +905,7 @@ if (import.meta.env.DEV) {
   background: white;
   border-radius: 0.75rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  border: 1px solid theme('colors.gray.200');
+  border: 1px solid theme("colors.gray.200");
   z-index: 45;
   max-width: 400px;
   margin: 0 auto;
@@ -835,12 +933,12 @@ if (import.meta.env.DEV) {
 
 .pwa-title {
   font-weight: 600;
-  color: theme('colors.gray.900');
+  color: theme("colors.gray.900");
 }
 
 .pwa-description {
   font-size: 0.875rem;
-  color: theme('colors.gray.600');
+  color: theme("colors.gray.600");
 }
 
 .pwa-actions {
@@ -851,7 +949,7 @@ if (import.meta.env.DEV) {
 
 .pwa-install-btn {
   padding: 0.5rem 1rem;
-  background: theme('colors.knue.primary');
+  background: theme("colors.knue.primary");
   color: white;
   border: none;
   border-radius: 0.5rem;
@@ -862,7 +960,7 @@ if (import.meta.env.DEV) {
 }
 
 .pwa-install-btn:hover {
-  background: theme('colors.knue.secondary');
+  background: theme("colors.knue.secondary");
 }
 
 .pwa-dismiss-btn {
@@ -873,15 +971,15 @@ if (import.meta.env.DEV) {
   height: 2rem;
   border: none;
   background: transparent;
-  color: theme('colors.gray.400');
+  color: theme("colors.gray.400");
   border-radius: 0.375rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .pwa-dismiss-btn:hover {
-  background: theme('colors.gray.100');
-  color: theme('colors.gray.600');
+  background: theme("colors.gray.100");
+  color: theme("colors.gray.600");
 }
 
 /* Responsive Design */
@@ -897,53 +995,56 @@ if (import.meta.env.DEV) {
   .desktop-only {
     display: none;
   }
-  
+
   .mobile-only {
     display: flex;
   }
-  
+
   .nav-container {
     padding: 0.75rem 1rem;
     min-height: 3rem;
   }
-  
+
   .brand-text {
     display: none;
   }
-  
+
   .nav-home-controls {
     max-width: none;
     margin: 0 0.5rem;
     flex: 1;
   }
-  
+
   .nav-refresh-btn {
     width: 2rem;
     height: 2rem;
   }
-  
+
   .mobile-nav {
     top: calc(3rem + env(safe-area-inset-top, 0px));
-    max-height: calc(100vh - 3rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(
+      100vh - 3rem - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+    );
   }
-  
+
   .route-component {
     min-height: calc(100vh - 3rem);
   }
-  
+
   .mobile-nav-link {
     padding: 1rem 0.75rem;
     margin-bottom: 0.25rem;
   }
-  
+
   .link-content {
     gap: 0.125rem;
   }
-  
+
   .link-title {
     font-size: 0.875rem;
   }
-  
+
   .link-description {
     font-size: 0.75rem;
   }
@@ -1024,151 +1125,151 @@ if (import.meta.env.DEV) {
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {
   .app-container {
-    background: theme('colors.gray.900');
+    background: theme("colors.gray.900");
   }
-  
+
   .app-header {
-    background: theme('colors.gray.800');
-    border-color: theme('colors.gray.700');
+    background: theme("colors.gray.800");
+    border-color: theme("colors.gray.700");
   }
-  
+
   .nav-brand {
-    color: theme('colors.gray.100');
+    color: theme("colors.gray.100");
   }
-  
+
   .nav-link {
-    color: theme('colors.gray.300');
+    color: theme("colors.gray.300");
   }
-  
+
   .nav-link:hover {
-    background: theme('colors.gray.700');
+    background: theme("colors.gray.700");
   }
-  
+
   .nav-refresh-btn {
-    color: theme('colors.gray.400');
+    color: theme("colors.gray.400");
   }
-  
+
   .nav-refresh-btn:hover:not(:disabled) {
-    background: theme('colors.gray.700');
-    color: theme('colors.knue.primary');
+    background: theme("colors.gray.700");
+    color: theme("colors.knue.primary");
   }
-  
+
   .nav-active {
-    background: theme('colors.gray.700');
+    background: theme("colors.gray.700");
   }
-  
+
   .mobile-nav {
-    background: theme('colors.gray.800');
-    border-color: theme('colors.gray.700');
+    background: theme("colors.gray.800");
+    border-color: theme("colors.gray.700");
   }
-  
+
   .mobile-nav-link {
-    color: theme('colors.gray.300');
+    color: theme("colors.gray.300");
   }
-  
+
   .mobile-nav-link:hover {
-    background: theme('colors.gray.700');
+    background: theme("colors.gray.700");
   }
-  
+
   .bottom-nav {
-    background: theme('colors.gray.800');
-    border-color: theme('colors.gray.700');
+    background: theme("colors.gray.800");
+    border-color: theme("colors.gray.700");
   }
-  
+
   .bottom-nav-item {
-    color: theme('colors.gray.400');
+    color: theme("colors.gray.400");
   }
-  
+
   .bottom-nav-item:hover {
-    background: theme('colors.gray.700');
+    background: theme("colors.gray.700");
   }
-  
+
   .pwa-prompt {
-    background: theme('colors.gray.800');
-    border-color: theme('colors.gray.700');
+    background: theme("colors.gray.800");
+    border-color: theme("colors.gray.700");
   }
-  
+
   .pwa-title {
-    color: theme('colors.gray.100');
+    color: theme("colors.gray.100");
   }
-  
+
   .pwa-description {
-    color: theme('colors.gray.400');
+    color: theme("colors.gray.400");
   }
 }
 
 /* Dark Mode via class (for manual theme switching) */
 .dark .app-container {
-  background: theme('colors.gray.900');
+  background: theme("colors.gray.900");
 }
 
 .dark .app-header {
-  background: theme('colors.gray.800');
-  border-color: theme('colors.gray.700');
+  background: theme("colors.gray.800");
+  border-color: theme("colors.gray.700");
 }
 
 .dark .nav-brand {
-  color: theme('colors.gray.100');
+  color: theme("colors.gray.100");
 }
 
 .dark .nav-link {
-  color: theme('colors.gray.300');
+  color: theme("colors.gray.300");
 }
 
 .dark .nav-link:hover {
-  background: theme('colors.gray.700');
+  background: theme("colors.gray.700");
 }
 
 .dark .nav-active {
-  background: theme('colors.gray.700');
+  background: theme("colors.gray.700");
 }
 
 .dark .nav-refresh-btn {
-  color: theme('colors.gray.400');
+  color: theme("colors.gray.400");
 }
 
 .dark .nav-refresh-btn:hover:not(:disabled) {
-  background: theme('colors.gray.700');
-  color: theme('colors.knue.primary');
+  background: theme("colors.gray.700");
+  color: theme("colors.knue.primary");
 }
 
 .dark .mobile-nav {
-  background: theme('colors.gray.800');
-  border-color: theme('colors.gray.700');
+  background: theme("colors.gray.800");
+  border-color: theme("colors.gray.700");
 }
 
 .dark .mobile-nav-link {
-  color: theme('colors.gray.300');
+  color: theme("colors.gray.300");
 }
 
 .dark .mobile-nav-link:hover {
-  background: theme('colors.gray.700');
+  background: theme("colors.gray.700");
 }
 
 .dark .bottom-nav {
-  background: theme('colors.gray.800');
-  border-color: theme('colors.gray.700');
+  background: theme("colors.gray.800");
+  border-color: theme("colors.gray.700");
 }
 
 .dark .bottom-nav-item {
-  color: theme('colors.gray.400');
+  color: theme("colors.gray.400");
 }
 
 .dark .bottom-nav-item:hover {
-  background: theme('colors.gray.700');
+  background: theme("colors.gray.700");
 }
 
 .dark .pwa-prompt {
-  background: theme('colors.gray.800');
-  border-color: theme('colors.gray.700');
+  background: theme("colors.gray.800");
+  border-color: theme("colors.gray.700");
 }
 
 .dark .pwa-title {
-  color: theme('colors.gray.100');
+  color: theme("colors.gray.100");
 }
 
 .dark .pwa-description {
-  color: theme('colors.gray.400');
+  color: theme("colors.gray.400");
 }
 
 /* Mobile Menu Open State */
@@ -1191,7 +1292,7 @@ if (import.meta.env.DEV) {
   .app-header {
     padding-top: max(env(safe-area-inset-top), 0);
   }
-  
+
   .bottom-nav {
     padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
   }
