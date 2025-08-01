@@ -319,20 +319,36 @@ export class RssService {
         }
 
         // Extract publication date
-        let pubDate = new Date().toISOString();
+        let pubDate = null;
         if (item.pubDate) {
-          try {
-            pubDate = new Date(item.pubDate).toISOString();
-          } catch (e) {
-            // Keep default date if parsing fails
+          // Handle CDATA or nested text content for pubDate
+          let pubDateString = '';
+          if (typeof item.pubDate === 'string') {
+            pubDateString = item.pubDate;
+          } else if (item.pubDate['#cdata']) {
+            pubDateString = item.pubDate['#cdata'];
+          } else if (item.pubDate['#text']) {
+            pubDateString = item.pubDate['#text'];
+          } else if (typeof item.pubDate === 'object' && item.pubDate.toString) {
+            pubDateString = item.pubDate.toString();
           }
+          
+          pubDate = this.parseKnuePubDate(pubDateString);
+          
         } else if (item.published || item.updated) {
           // Atom format
           try {
             pubDate = new Date(item.published || item.updated).toISOString();
           } catch (e) {
-            // Keep default date if parsing fails
+            console.warn('Failed to parse Atom date:', item.published || item.updated);
           }
+        }
+        
+        // If we still don't have a valid date, skip this item or use a very old date
+        if (!pubDate) {
+          console.warn('No valid publication date found for item:', { title: title.trim(), link: link.trim() });
+          // Use a very old date instead of current time to indicate missing data
+          pubDate = new Date('2000-01-01').toISOString();
         }
 
         // Only add items with both title and link
@@ -352,6 +368,44 @@ export class RssService {
     }
 
     return items;
+  }
+
+  /**
+   * Parse KNUE RSS pubDate format (YYYY-MM-DD) to ISO string
+   */
+  static parseKnuePubDate(dateString) {
+    if (!dateString || typeof dateString !== 'string') {
+      return null;
+    }
+
+    // Handle CDATA or nested text content
+    const cleanDateString = dateString.trim();
+    
+    // Check if it matches YYYY-MM-DD format
+    const dateRegex = /^(\d{4})-(\d{2})-(\d{2})$/;
+    const match = cleanDateString.match(dateRegex);
+    
+    if (match) {
+      const [, year, month, day] = match;
+      // Create date at midnight KST (UTC+9)
+      const date = new Date(`${year}-${month}-${day}T00:00:00+09:00`);
+      
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+    }
+    
+    // Fallback: try standard Date parsing
+    try {
+      const date = new Date(cleanDateString);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+    } catch (e) {
+      console.warn('Failed to parse date:', cleanDateString);
+    }
+    
+    return null;
   }
 
   /**

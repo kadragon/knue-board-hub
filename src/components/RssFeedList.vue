@@ -468,6 +468,7 @@ const newItemsToday = computed(
 // Selected departments info for display
 const selectedDepartments = computed(() => {
   return selectedDepartmentIds.value
+    .filter(id => id && typeof id === 'string' && id.trim() !== '') // Filter invalid IDs first
     .map(id => getDepartment(id))
     .filter(dept => dept) // Filter out any undefined departments
 });

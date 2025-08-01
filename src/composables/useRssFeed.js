@@ -290,7 +290,19 @@ export function useRssFeed(options = {}) {
   function loadSelectedDepartments() {
     try {
       const stored = localStorage.getItem(SELECTED_DEPARTMENTS_KEY)
-      return stored ? JSON.parse(stored) : []
+      if (!stored) return []
+      
+      const parsed = JSON.parse(stored)
+      if (!Array.isArray(parsed)) return []
+      
+      // Filter out invalid department IDs
+      return parsed.filter(id => 
+        id && 
+        typeof id === 'string' && 
+        id.trim() !== '' && 
+        id !== 'undefined' && 
+        id !== 'null'
+      )
     } catch (error) {
       console.warn('Failed to load selected departments from localStorage:', error)
       return []
@@ -513,6 +525,11 @@ export function useRssFeed(options = {}) {
 
     console.log('📰 Refreshing feeds with optimistic updates...')
     
+    // Force clear all caches if skipCache is true
+    if (options.skipCache) {
+      await clearAllCaches()
+    }
+    
     // Step 1: Show existing cached data immediately if available
     if (!options.skipCache) {
       try {
@@ -589,6 +606,34 @@ export function useRssFeed(options = {}) {
       cacheManager.clear()
     }
     console.log('📰 RSS cache cleared')
+  }
+
+  /**
+   * Force clear all caches including browser caches
+   * @returns {Promise<void>}
+   */
+  async function clearAllCaches() {
+    try {
+      // Clear internal cache manager
+      cacheManager.clear()
+      
+      // Clear localStorage and sessionStorage
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('rss-feeds-cache')
+        localStorage.removeItem('departments-cache')
+      }
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.clear()
+      }
+      
+      // Clear the feeds state completely
+      feeds.value.clear()
+      errors.value.clear()
+      
+      console.log('🗑️ All RSS caches force cleared')
+    } catch (error) {
+      console.warn('⚠️ Failed to clear some caches:', error)
+    }
   }
 
 
@@ -701,6 +746,7 @@ export function useRssFeed(options = {}) {
     fetchFeeds,
     refreshFeeds,
     clearCache,
+    clearAllCaches,
     setupAutoRefresh,
     stopAutoRefresh,
     setActiveDepartments,

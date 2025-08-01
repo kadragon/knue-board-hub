@@ -136,6 +136,12 @@ export function useDepartments() {
    * @returns {Object|null} Department data or null
    */
   async function getDepartment(departmentId, fetchIfMissing = true) {
+    // Validate input - prevent undefined/null/empty from causing recursion
+    if (!departmentId || typeof departmentId !== 'string' || departmentId.trim() === '') {
+      console.warn(`📋 Invalid department ID provided:`, departmentId)
+      return null
+    }
+
     // First check in-memory departments
     let department = departments.value.find(dept => dept.id === departmentId)
     if (department) {
@@ -153,8 +159,8 @@ export function useDepartments() {
       console.warn(`📋 Individual department cache lookup failed for ${departmentId}:`, error)
     }
     
-    // If not found and fetch is allowed, try fetching all departments
-    if (!department && fetchIfMissing && !loading.value) {
+    // If not found and fetch is allowed, try fetching all departments (but only once)
+    if (!department && fetchIfMissing && !loading.value && isInitialized.value === false) {
       console.log(`📋 Department ${departmentId} not found, fetching all departments...`)
       await fetchDepartments()
       department = departments.value.find(dept => dept.id === departmentId)
