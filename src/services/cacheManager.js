@@ -84,7 +84,7 @@ export class CacheManager {
     const originalSize = serialized.length
     
     // Determine if compression is beneficial
-    const shouldCompress = originalSize > this.compressionThreshold && this.compressionEnabled
+    let shouldCompress = originalSize > this.compressionThreshold && this.compressionEnabled
     let finalData = data
     let compressionRatio = 1
     

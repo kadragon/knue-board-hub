@@ -230,7 +230,7 @@ export class PerformanceMonitor {
         // Fallback: estimate localStorage usage
         let localStorageSize = 0
         for (let key in localStorage) {
-          if (localStorage.hasOwnProperty(key)) {
+          if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
             localStorageSize += localStorage[key].length + key.length
           }
         }

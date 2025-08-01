@@ -178,7 +178,10 @@
     </div>
 
     <script>
-        const DEV_SERVER = 'http://localhost:5173';
+        // Use HTTPS for security, fallback to HTTP only in development
+        const DEV_SERVER = window.location.protocol === 'https:' 
+            ? 'https://localhost:5173' 
+            : 'http://localhost:5173';
         let testResults = [];
         let currentTest = 0;
         let totalTests = 0;
@@ -319,7 +322,22 @@
                 
                 // Open the app in an iframe to trigger cache operations
                 const iframe = document.createElement('iframe');
-                iframe.src = DEV_SERVER;
+                
+                // Add security attributes
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+                iframe.setAttribute('referrerpolicy', 'no-referrer');
+                
+                // Validate URL before setting
+                try {
+                    const url = new URL(DEV_SERVER);
+                    if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
+                        throw new Error('Only localhost connections allowed');
+                    }
+                    iframe.src = DEV_SERVER;
+                } catch (error) {
+                    throw new Error(`Invalid or unsafe URL: ${error.message}`);
+                }
+                
                 iframe.style.display = 'none';
                 document.body.appendChild(iframe);
                 
