@@ -237,17 +237,20 @@ The app includes a comprehensive keyword filtering system that allows users to h
 ### Architecture
 
 **Storage Layer:**
+
 - Uses localStorage with key `knue-board-hub:blocked-keywords`
 - Data stored as JSON array of lowercase strings
 - Automatic persistence on all changes
 
 **Filtering Logic:**
+
 - Case-insensitive substring matching
 - Checks both post title and description/content fields
 - Applied before other filters for performance optimization
 - Integrated with existing search and date filtering
 
 **Performance Considerations:**
+
 - Keywords are stored as a Set for O(1) lookup performance
 - Filtering applied early in the pipeline to reduce processing
 - Reactive updates using Vue's reactivity system
@@ -255,6 +258,7 @@ The app includes a comprehensive keyword filtering system that allows users to h
 ### User Interface
 
 **Settings Page (`/departments`):**
+
 - Keyword input with Enter key support
 - Visual keyword tags with individual remove buttons
 - Bulk operations (clear all, import/export)
@@ -263,6 +267,7 @@ The app includes a comprehensive keyword filtering system that allows users to h
 - Real-time filtering statistics
 
 **Main Feed Page:**
+
 - Active filter indicators showing up to 3 blocked keywords
 - One-click keyword removal from filter bar
 - "More keywords" link to settings when >3 keywords blocked
@@ -271,43 +276,49 @@ The app includes a comprehensive keyword filtering system that allows users to h
 ### Usage Patterns
 
 **Adding Keywords:**
+
 ```javascript
-const { addBlockedKeyword } = useKeywordFilter()
-addBlockedKeyword('spam') // Returns true if added, false if already exists
+const { addBlockedKeyword } = useKeywordFilter();
+addBlockedKeyword("spam"); // Returns true if added, false if already exists
 ```
 
 **Filtering Items:**
+
 ```javascript
-const { filterItems } = useKeywordFilter()
-const filteredItems = filterItems(allItems) // Returns items without blocked keywords
+const { filterItems } = useKeywordFilter();
+const filteredItems = filterItems(allItems); // Returns items without blocked keywords
 ```
 
 **Managing Keywords:**
+
 ```javascript
 const {
-  blockedKeywords,      // Reactive array of blocked keywords
-  hasBlockedKeywords,   // Boolean computed property
+  blockedKeywords, // Reactive array of blocked keywords
+  hasBlockedKeywords, // Boolean computed property
   removeBlockedKeyword, // Remove single keyword
   clearBlockedKeywords, // Remove all keywords
-  importKeywords,       // Import from text
-  exportKeywords        // Export to text
-} = useKeywordFilter()
+  importKeywords, // Import from text
+  exportKeywords, // Export to text
+} = useKeywordFilter();
 ```
 
 ### Integration Points
 
 **RssFeedList Component:**
+
 - Integrated with existing filtering pipeline
 - Keywords applied before search/date filters
 - Visual indicators in filter bar
 - Statistics in feed summary
 
 **DepartmentsView Component:**
+
 - Complete keyword management interface
 - Import/export functionality
 - Real-time statistics display
 
 **Styling:**
+
 - Red color scheme for blocked keyword indicators
 - Consistent with existing filter tag styling
 - Mobile-optimized touch targets
