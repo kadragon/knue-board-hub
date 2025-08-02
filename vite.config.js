@@ -11,12 +11,12 @@ export default defineConfig({
       '^/api/(departments|rss/(items|refresh)|health|auth|user)': {
         target: 'http://localhost:8787',
         changeOrigin: true,
-        configure: (proxy, options) => {
-          proxy.on('error', (err, req, res) => {
+        configure: (proxy) => {
+          proxy.on('error', () => {
             console.log('❌ Proxy error - make sure Cloudflare Worker is running with: npx wrangler dev')
             console.log('   Run in another terminal: npx wrangler dev')
           })
-          proxy.on('proxyReq', (proxyReq, req, res) => {
+          proxy.on('proxyReq', (proxyReq) => {
             console.log('🔄 Proxying to Worker:', proxyReq.method, proxyReq.path)
           })
         }
@@ -35,13 +35,13 @@ export default defineConfig({
           }
           return '/rssBbsNtt.do'
         },
-        configure: (proxy, options) => {
-          proxy.on('proxyReq', (proxyReq, req, res) => {
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
             // Add necessary headers for RSS requests
             proxyReq.setHeader('Accept', 'application/rss+xml, application/xml, text/xml')
             proxyReq.setHeader('User-Agent', 'KNUE-RSS-Aggregator/1.0')
           })
-          proxy.on('proxyRes', (proxyRes, req, res) => {
+          proxy.on('proxyRes', (proxyRes) => {
             // Add CORS headers
             proxyRes.headers['Access-Control-Allow-Origin'] = '*'
             proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'

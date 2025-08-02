@@ -1,10 +1,14 @@
 <template>
   <div id="app" class="app-container">
+    <!-- Skip Links for Accessibility -->
+    <a href="#main-content" class="skip-link">주요 콘텐츠로 건너뛰기</a>
+    <a href="#navigation" class="skip-link">네비게이션으로 건너뛰기</a>
+    
     <!-- Main Layout -->
     <div class="app-layout" :class="layoutClass">
       <!-- Navigation Header -->
       <header v-if="showNavigation" class="app-header">
-        <nav class="app-nav">
+        <nav id="navigation" class="app-nav">
           <div class="nav-container">
             <!-- Logo/Brand -->
             <router-link to="/" class="nav-brand">
@@ -32,18 +36,20 @@
             </div>
 
             <!-- Desktop Navigation -->
-            <div class="nav-menu desktop-only">
+            <nav class="nav-menu desktop-only" role="navigation" aria-label="주요 네비게이션">
               <router-link
-                v-for="route in navRoutes"
+                v-for="(route, index) in navRoutes"
                 :key="route.name"
                 :to="{ name: route.name }"
                 class="nav-link"
                 :class="{ 'nav-active': isCurrentRoute(route.name) }"
+                :aria-current="isCurrentRoute(route.name) ? 'page' : undefined"
+                :title="`${route.meta.title} 페이지로 이동 (Alt+${index + 1})`"
               >
-                <i :class="route.meta.icon" class="w-4 h-4 mr-2" />
+                <i :class="route.meta.icon" class="w-4 h-4 mr-2" aria-hidden="true" />
                 {{ route.meta.title }}
               </router-link>
-            </div>
+            </nav>
 
             <!-- Mobile Menu Toggle -->
             <button
@@ -91,7 +97,7 @@
       </header>
 
       <!-- Main Content Area -->
-      <main class="app-main" :class="mainClass">
+      <main id="main-content" class="app-main" :class="mainClass">
         <!-- Route Transition -->
         <router-view v-slot="{ Component, route }">
           <Transition :name="transitionName" mode="out-in">
@@ -105,15 +111,22 @@
       </main>
 
       <!-- Bottom Navigation (Mobile) -->
-      <nav v-if="showBottomNav" class="bottom-nav mobile-only">
+      <nav 
+        v-if="showBottomNav" 
+        class="bottom-nav mobile-only" 
+        role="navigation" 
+        aria-label="하단 네비게이션"
+      >
         <router-link
           v-for="route in bottomNavRoutes"
           :key="`bottom-${route.name}`"
           :to="{ name: route.name }"
           class="bottom-nav-item"
           :class="{ 'nav-active': isCurrentRoute(route.name) }"
+          :aria-current="isCurrentRoute(route.name) ? 'page' : undefined"
+          :aria-label="`${route.meta.title} 페이지로 이동`"
         >
-          <i :class="route.meta.icon" class="w-5 h-5" />
+          <i :class="route.meta.icon" class="w-5 h-5" aria-hidden="true" />
           <span class="nav-label">{{ route.meta.title }}</span>
         </router-link>
       </nav>
@@ -481,17 +494,48 @@ function handleGlobalError(error) {
   showError("예상치 못한 오류가 발생했습니다");
 }
 
-// Keyboard shortcuts
+// Keyboard shortcuts (Enhanced accessibility)
 function handleKeydown(event) {
   // ESC key closes mobile menu
   if (event.key === "Escape" && mobileMenuOpen.value) {
     closeMobileMenu();
+    return;
   }
 
-  // Ctrl/Cmd + K for quick navigation (future feature)
+  // Alt + 1-4 for quick navigation
+  if (event.altKey && /^[1-4]$/.test(event.key)) {
+    event.preventDefault();
+    const index = parseInt(event.key) - 1;
+    const route = navRoutes.value[index];
+    if (route) {
+      router.push({ name: route.name });
+    }
+    return;
+  }
+
+  // Ctrl/Cmd + K for search focus (if search exists)
   if ((event.ctrlKey || event.metaKey) && event.key === "k") {
     event.preventDefault();
-    // Could open a command palette or search
+    const searchInput = document.querySelector('input[type="search"]');
+    if (searchInput) {
+      searchInput.focus();
+    }
+    return;
+  }
+
+  // Tab navigation enhancement for better focus management
+  if (event.key === "Tab" && mobileMenuOpen.value) {
+    const focusableElements = document.querySelectorAll('.mobile-nav-link');
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
   }
 }
 
@@ -565,7 +609,7 @@ if (import.meta.env.DEV) {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: theme("colors.gray.50");
+  background: theme("colors.knue.surface");
 }
 
 .app-layout {
@@ -592,10 +636,10 @@ if (import.meta.env.DEV) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1.5rem;
+  padding: 1rem 2rem;
   max-width: 1200px;
   margin: 0 auto;
-  min-height: 3.5rem;
+  min-height: 4rem;
 }
 
 /* Brand */
@@ -603,15 +647,15 @@ if (import.meta.env.DEV) {
   display: flex;
   align-items: center;
   text-decoration: none;
-  color: theme("colors.gray.900");
+  color: theme("colors.knue.primary");
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   transition: color 0.2s ease;
   flex-shrink: 0;
 }
 
 .nav-brand:hover {
-  color: theme("colors.knue.primary");
+  color: theme("colors.knue.secondary");
 }
 
 .brand-text {
@@ -673,13 +717,14 @@ if (import.meta.env.DEV) {
 }
 
 .nav-link:hover {
-  color: theme("colors.knue.primary");
-  background: theme("colors.blue.50");
+  color: theme("colors.knue.secondary");
+  background: rgba(7, 45, 110, 0.05);
 }
 
 .nav-active {
   color: theme("colors.knue.primary");
-  background: theme("colors.blue.100");
+  background: rgba(7, 45, 110, 0.1);
+  font-weight: 600;
 }
 
 /* Mobile Menu Toggle */
@@ -816,12 +861,13 @@ if (import.meta.env.DEV) {
 }
 
 .bottom-nav-item:hover {
-  color: theme("colors.knue.primary");
-  background: theme("colors.blue.50");
+  color: theme("colors.knue.secondary");
+  background: rgba(7, 45, 110, 0.05);
 }
 
 .bottom-nav-item.nav-active {
   color: theme("colors.knue.primary");
+  font-weight: 600;
 }
 
 .nav-label {
@@ -1122,155 +1168,6 @@ if (import.meta.env.DEV) {
   transform: translateX(100%);
 }
 
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-  .app-container {
-    background: theme("colors.gray.900");
-  }
-
-  .app-header {
-    background: theme("colors.gray.800");
-    border-color: theme("colors.gray.700");
-  }
-
-  .nav-brand {
-    color: theme("colors.gray.100");
-  }
-
-  .nav-link {
-    color: theme("colors.gray.300");
-  }
-
-  .nav-link:hover {
-    background: theme("colors.gray.700");
-  }
-
-  .nav-refresh-btn {
-    color: theme("colors.gray.400");
-  }
-
-  .nav-refresh-btn:hover:not(:disabled) {
-    background: theme("colors.gray.700");
-    color: theme("colors.knue.primary");
-  }
-
-  .nav-active {
-    background: theme("colors.gray.700");
-  }
-
-  .mobile-nav {
-    background: theme("colors.gray.800");
-    border-color: theme("colors.gray.700");
-  }
-
-  .mobile-nav-link {
-    color: theme("colors.gray.300");
-  }
-
-  .mobile-nav-link:hover {
-    background: theme("colors.gray.700");
-  }
-
-  .bottom-nav {
-    background: theme("colors.gray.800");
-    border-color: theme("colors.gray.700");
-  }
-
-  .bottom-nav-item {
-    color: theme("colors.gray.400");
-  }
-
-  .bottom-nav-item:hover {
-    background: theme("colors.gray.700");
-  }
-
-  .pwa-prompt {
-    background: theme("colors.gray.800");
-    border-color: theme("colors.gray.700");
-  }
-
-  .pwa-title {
-    color: theme("colors.gray.100");
-  }
-
-  .pwa-description {
-    color: theme("colors.gray.400");
-  }
-}
-
-/* Dark Mode via class (for manual theme switching) */
-.dark .app-container {
-  background: theme("colors.gray.900");
-}
-
-.dark .app-header {
-  background: theme("colors.gray.800");
-  border-color: theme("colors.gray.700");
-}
-
-.dark .nav-brand {
-  color: theme("colors.gray.100");
-}
-
-.dark .nav-link {
-  color: theme("colors.gray.300");
-}
-
-.dark .nav-link:hover {
-  background: theme("colors.gray.700");
-}
-
-.dark .nav-active {
-  background: theme("colors.gray.700");
-}
-
-.dark .nav-refresh-btn {
-  color: theme("colors.gray.400");
-}
-
-.dark .nav-refresh-btn:hover:not(:disabled) {
-  background: theme("colors.gray.700");
-  color: theme("colors.knue.primary");
-}
-
-.dark .mobile-nav {
-  background: theme("colors.gray.800");
-  border-color: theme("colors.gray.700");
-}
-
-.dark .mobile-nav-link {
-  color: theme("colors.gray.300");
-}
-
-.dark .mobile-nav-link:hover {
-  background: theme("colors.gray.700");
-}
-
-.dark .bottom-nav {
-  background: theme("colors.gray.800");
-  border-color: theme("colors.gray.700");
-}
-
-.dark .bottom-nav-item {
-  color: theme("colors.gray.400");
-}
-
-.dark .bottom-nav-item:hover {
-  background: theme("colors.gray.700");
-}
-
-.dark .pwa-prompt {
-  background: theme("colors.gray.800");
-  border-color: theme("colors.gray.700");
-}
-
-.dark .pwa-title {
-  color: theme("colors.gray.100");
-}
-
-.dark .pwa-description {
-  color: theme("colors.gray.400");
-}
 
 /* Mobile Menu Open State */
 .mobile-menu-open {

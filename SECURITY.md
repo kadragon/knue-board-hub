@@ -1,21 +1,9 @@
 # Security Guidelines
 
-## Environment Variables
-
-### MCP Server Configuration
-- **Never commit API keys to version control**
-- Copy `.env.example` to `.env` and configure with your actual keys
-- Use environment variables for all sensitive configuration
-
-### Required Environment Variables
-```bash
-# Magic MCP Server API Key
-MAGIC_API_KEY=your_actual_api_key
-```
-
 ## Test File Security
 
 ### Browser Test Security
+
 The cache browser test (`tests/cache/browser-test.html`) includes security measures:
 
 - **Protocol Detection**: Automatically uses HTTPS when available
@@ -23,7 +11,8 @@ The cache browser test (`tests/cache/browser-test.html`) includes security measu
 - **Iframe Sandboxing**: Restricted iframe permissions with `sandbox` attribute
 - **Referrer Policy**: No-referrer policy to prevent information leakage
 
-### Security Validations Applied:
+### Security Validations Applied
+
 1. URL hostname validation (localhost/127.0.0.1 only)
 2. Iframe sandbox restrictions
 3. Referrer policy protection

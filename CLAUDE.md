@@ -41,6 +41,7 @@ The app uses Vue 3 composables extensively for shared logic:
 
 - `useRssFeed.js` - RSS data fetching, caching, and state management
 - `useNotifications.js` - Global notification system
+- `useKeywordFilter.js` - Keyword-based content filtering system
 
 **Department-Driven Architecture:**
 All RSS feeds are organized around department configurations in `src/config/departments.js`. Each department has:
@@ -113,7 +114,7 @@ All RSS feeds are organized around department configurations in `src/config/depa
 
 **Persistence:**
 
-- localStorage for user preferences (bookmarks, recent searches)
+- localStorage for user preferences (bookmarks, recent searches, blocked keywords)
 - RSS caching with TTL in composable memory
 - PWA installation prompt dismissal tracking
 
@@ -157,6 +158,19 @@ The build separates vendor code (Vue) from RSS-specific utilities for optimal ca
 - **Purpose**: Global notification system
 - **Returns**: `{ notifications, show, hide, clear }`
 - **Types**: `success`, `error`, `warning`, `info`
+
+**`useKeywordFilter()`**
+
+- **Purpose**: Manages keyword-based content filtering
+- **Returns**: `{ blockedKeywords, hasBlockedKeywords, addBlockedKeyword, removeBlockedKeyword, clearBlockedKeywords, filterItems, getFilterStats, importKeywords, exportKeywords }`
+- **Key Methods**:
+  - `addBlockedKeyword(keyword)` - Add keyword to blocked list
+  - `removeBlockedKeyword(keyword)` - Remove keyword from blocked list
+  - `filterItems(items)` - Filter array of RSS items based on blocked keywords
+  - `getFilterStats(original, filtered)` - Get filtering statistics
+  - `importKeywords(text)` - Import keywords from comma/newline separated text
+  - `exportKeywords()` - Export keywords as text string
+- **Storage**: localStorage key `knue-board-hub:blocked-keywords`
 
 ### Components Props
 
@@ -215,7 +229,99 @@ defineProps({
 - `offset` - Pagination offset
 - `search` - Search query
 - `dateFilter` - `all`, `today`, `week`, `month`
-- `sortBy` - `date-desc`, `date-asc`, `department`
+
+## Keyword Filtering System
+
+The app includes a comprehensive keyword filtering system that allows users to hide posts containing specific keywords.
+
+### Architecture
+
+**Storage Layer:**
+
+- Uses localStorage with key `knue-board-hub:blocked-keywords`
+- Data stored as JSON array of lowercase strings
+- Automatic persistence on all changes
+
+**Filtering Logic:**
+
+- Case-insensitive substring matching
+- Checks both post title and description/content fields
+- Applied before other filters for performance optimization
+- Integrated with existing search and date filtering
+
+**Performance Considerations:**
+
+- Keywords are stored as a Set for O(1) lookup performance
+- Filtering applied early in the pipeline to reduce processing
+- Reactive updates using Vue's reactivity system
+
+### User Interface
+
+**Settings Page (`/departments`):**
+
+- Keyword input with Enter key support
+- Visual keyword tags with individual remove buttons
+- Bulk operations (clear all, import/export)
+- Import modal for batch keyword addition
+- Export to clipboard or download as text file
+- Real-time filtering statistics
+
+**Main Feed Page:**
+
+- Active filter indicators showing up to 3 blocked keywords
+- One-click keyword removal from filter bar
+- "More keywords" link to settings when >3 keywords blocked
+- Integrated with existing filter system UI
+
+### Usage Patterns
+
+**Adding Keywords:**
+
+```javascript
+const { addBlockedKeyword } = useKeywordFilter();
+addBlockedKeyword("spam"); // Returns true if added, false if already exists
+```
+
+**Filtering Items:**
+
+```javascript
+const { filterItems } = useKeywordFilter();
+const filteredItems = filterItems(allItems); // Returns items without blocked keywords
+```
+
+**Managing Keywords:**
+
+```javascript
+const {
+  blockedKeywords, // Reactive array of blocked keywords
+  hasBlockedKeywords, // Boolean computed property
+  removeBlockedKeyword, // Remove single keyword
+  clearBlockedKeywords, // Remove all keywords
+  importKeywords, // Import from text
+  exportKeywords, // Export to text
+} = useKeywordFilter();
+```
+
+### Integration Points
+
+**RssFeedList Component:**
+
+- Integrated with existing filtering pipeline
+- Keywords applied before search/date filters
+- Visual indicators in filter bar
+- Statistics in feed summary
+
+**DepartmentsView Component:**
+
+- Complete keyword management interface
+- Import/export functionality
+- Real-time statistics display
+
+**Styling:**
+
+- Red color scheme for blocked keyword indicators
+- Consistent with existing filter tag styling
+- Mobile-optimized touch targets
 
 ## Troubleshooting
 
@@ -246,6 +352,13 @@ defineProps({
 2. Check D1 database bindings and IDs
 3. Ensure secrets are properly configured in Cloudflare dashboard
 
+**Keyword filtering issues:**
+
+1. Keywords not persisting: Check browser localStorage permissions and capacity
+2. Filtering not working: Verify case-insensitive matching and substring logic
+3. Performance with many keywords: Consider reducing keyword count or using more specific terms
+4. Import/export failures: Check for special characters or encoding issues
+
 ### Performance Optimization
 
 **RSS Feed Performance:**
@@ -265,3 +378,10 @@ defineProps({
 - Indexed queries on `department_id`, `pub_date`, and `hash`
 - Automatic cleanup keeps cache size manageable (100 items per department)
 - SHA-256 hashing for efficient deduplication
+
+**Keyword Filtering Performance:**
+
+- Keywords stored as Set for O(1) lookup performance
+- Filtering applied early in pipeline to reduce processing overhead
+- Case-insensitive matching optimized with toLowerCase() preprocessing
+- localStorage access minimized through reactive state management

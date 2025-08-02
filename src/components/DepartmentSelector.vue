@@ -250,7 +250,7 @@ const applying = ref(false)
 const initialSelection = ref([...props.modelValue])
 
 // Use departments from API
-const { departments: allDepartments, loading: departmentsLoading, fetchDepartments, getDefaultDepartments } = useDepartments()
+const { departments: allDepartments, getDefaultDepartments } = useDepartments()
 const departments = computed(() => allDepartments.value)
 const selectionModes = [
   { value: 'default', label: '일반', icon: 'i-tabler-list' },
@@ -342,12 +342,13 @@ async function applySelection() {
   try {
     await new Promise(resolve => setTimeout(resolve, 500)) // Simulate API call
     
-    initialSelection.value = [...selectedDepartmentIds.value]
-    
     emit('apply', {
       selected: selectedDepartmentIds.value,
       departments: selectedDepartments.value
     })
+    
+    // Only update initialSelection after successful application
+    initialSelection.value = [...selectedDepartmentIds.value]
   } finally {
     applying.value = false
   }
@@ -393,8 +394,8 @@ watch(() => props.modelValue, (newValue) => {
   
   isUpdatingFromParent = true
   selectedDepartmentIds.value = [...newValue]
-  // Update initial selection when parent updates
-  initialSelection.value = [...newValue]
+  // DON'T update initialSelection here - it should only be set on mount
+  // This preserves the original state for change detection
   
   // Reset flag on next tick
   nextTick(() => {
@@ -404,15 +405,13 @@ watch(() => props.modelValue, (newValue) => {
 
 // Lifecycle
 onMounted(() => {
-  // Set initial selection for change tracking
-  initialSelection.value = [...selectedDepartmentIds.value]
-  
-  // Set initial selection if empty (after setting initialSelection)
+  // Set initial selection if empty first
   if (selectedDepartmentIds.value.length === 0) {
     selectDefaults()
-    // Update initialSelection after default selection
-    initialSelection.value = [...selectedDepartmentIds.value]
   }
+  
+  // Set initial selection for change tracking AFTER any defaults are applied
+  initialSelection.value = [...selectedDepartmentIds.value]
 })
 </script>
 

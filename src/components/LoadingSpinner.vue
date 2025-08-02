@@ -177,18 +177,6 @@ const textClass = computed(() => {
   return classes
 })
 
-// Size mapping for predefined sizes
-const sizeValue = computed(() => {
-  const sizeMap = {
-    xs: '1rem',
-    sm: '1.5rem',
-    md: '2rem',
-    lg: '3rem',
-    xl: '4rem'
-  }
-  
-  return sizeMap[props.size] || props.size
-})
 </script>
 
 <style scoped>
@@ -323,18 +311,4 @@ const sizeValue = computed(() => {
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .loading-overlay {
-    background-color: rgba(0, 0, 0, 0.8);
-  }
-  
-  .progress-bar {
-    background-color: theme('colors.gray.700');
-  }
-  
-  .progress-text {
-    color: theme('colors.gray.400');
-  }
-}
 </style>

@@ -23,12 +23,6 @@
           <option value="month">이번 달</option>
         </select>
 
-        <!-- Sort Options -->
-        <select v-model="sortOption" class="sort-select">
-          <option value="date-desc">최신순</option>
-          <option value="date-asc">오래된순</option>
-          <option value="department">게시판순</option>
-        </select>
       </div>
 
       <!-- Active Filters -->
@@ -49,6 +43,24 @@
           {{ getDateFilterLabel(dateFilter) }}
           <i class="i-tabler-x w-3 h-3 ml-1" />
         </button>
+        <button
+          v-for="keyword in blockedKeywords.slice(0, 3)"
+          :key="`blocked-${keyword}`"
+          @click="handleRemoveBlockedKeyword(keyword)"
+          class="filter-tag blocked-keyword-tag"
+        >
+          <i class="i-tabler-ban w-3 h-3 mr-1" />
+          {{ keyword }}
+          <i class="i-tabler-x w-3 h-3 ml-1" />
+        </button>
+        <router-link
+          v-if="blockedKeywords.length > 3"
+          to="/departments"
+          class="filter-tag more-keywords-tag"
+        >
+          +{{ blockedKeywords.length - 3 }}개 더
+          <i class="i-tabler-settings w-3 h-3 ml-1" />
+        </router-link>
       </div>
     </div>
 
@@ -133,6 +145,10 @@
           <div class="stat-item">
             <i class="i-tabler-building-bank w-4 h-4 mr-1" />
             <span>{{ activeDepartmentCount }}개 게시판</span>
+          </div>
+          <div v-if="hasBlockedKeywords" class="stat-item filter-stat">
+            <i class="i-tabler-filter w-4 h-4 mr-1" />
+            <span>{{ blockedKeywords.length }}개 키워드 차단</span>
           </div>
         </div>
 
@@ -263,6 +279,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useRssFeed } from "../composables/useRssFeed.js";
 import { useGlobalNotifications } from "../composables/useNotifications.js";
 import { useDepartments } from "../composables/useDepartments.js";
+import { useKeywordFilter } from "../composables/useKeywordFilter.js";
 import {
   groupByDateCategory,
   isToday,
@@ -327,9 +344,7 @@ const props = defineProps({
 
 // Composables
 const { 
-  getDefaultDepartments, 
   initialized: departmentsInitialized,
-  departments: allDepartments,
   getDepartment
 } = useDepartments();
 const {
@@ -348,11 +363,17 @@ const {
 
 const { showSuccess, showError, showFeedUpdate } = useGlobalNotifications();
 
+const { 
+  filterItems, 
+  hasBlockedKeywords, 
+  blockedKeywords, 
+  removeBlockedKeyword
+} = useKeywordFilter();
+
 // State - Initialize empty, will be set once departments are loaded
 const selectedDepartmentIds = ref([]);
 const searchQuery = ref("");
 const dateFilter = ref("all");
-const sortOption = ref("date-desc");
 const currentPage = ref(1);
 const isRefreshing = ref(false);
 const isLoadingMore = ref(false);
@@ -382,20 +403,23 @@ const errorMessage = computed(() => {
   const errorArray = Array.from(errors.value.values());
   return errorArray[0]?.message || "알 수 없는 오류가 발생했습니다";
 });
-
-
 const loadingProgress = computed(() => {
   // Simulate loading progress
   return loading.value ? Math.min(90, 30 + (Date.now() % 60)) : 100;
 });
 
 const hasActiveFilters = computed(
-  () => searchQuery.value || dateFilter.value !== "all"
+  () => searchQuery.value || dateFilter.value !== "all" || hasBlockedKeywords.value
 );
 
 // Filter and sort items
 const filteredItems = computed(() => {
   let items = [...allItems.value];
+
+  // Keyword filter (applied first to reduce processing)
+  if (hasBlockedKeywords.value) {
+    items = filterItems(items);
+  }
 
   // Search filter
   if (searchQuery.value) {
@@ -423,19 +447,8 @@ const filteredItems = computed(() => {
     });
   }
 
-  // Sort
-  switch (sortOption.value) {
-    case "date-asc":
-      items.sort((a, b) => new Date(a.pubDate) - new Date(b.pubDate));
-      break;
-    case "department":
-      items.sort((a, b) =>
-        a.department?.name.localeCompare(b.department?.name)
-      );
-      break;
-    default: // date-desc
-      items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-  }
+  // Always sort by newest first
+  items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
   return items;
 });
@@ -468,13 +481,12 @@ const newItemsToday = computed(
 // Selected departments info for display
 const selectedDepartments = computed(() => {
   return selectedDepartmentIds.value
+    .filter(id => id && typeof id === 'string' && id.trim() !== '') // Filter invalid IDs first
     .map(id => getDepartment(id))
     .filter(dept => dept) // Filter out any undefined departments
 });
 
 const activeDepartmentCount = computed(() => selectedDepartmentIds.value.length);
-
-
 
 // Methods
 async function handleRefresh() {
@@ -499,13 +511,9 @@ async function handleRefresh() {
     isRefreshing.value = false;
   }
 }
-
-
 async function handleAppRefresh() {
   await handleRefresh();
 }
-
-
 function handleItemClick() {
   // Handle item click
 }
@@ -539,7 +547,6 @@ function loadMore() {
 function clearFilters() {
   searchQuery.value = "";
   dateFilter.value = "all";
-  sortOption.value = "date-desc";
 }
 
 function scrollToTop() {
@@ -581,6 +588,18 @@ function formatDateGroupHeader(date) {
     older: "이전",
   };
   return labels[date] || date;
+}
+
+// Keyword filter methods
+async function handleRemoveBlockedKeyword(keyword) {
+  try {
+    const wasRemoved = removeBlockedKeyword(keyword);
+    if (wasRemoved) {
+      showSuccess(`"${keyword}" 키워드 차단이 해제되었습니다`);
+    }
+  } catch (error) {
+    showError('키워드 차단 해제 중 오류가 발생했습니다');
+  }
 }
 
 // Infinite scroll
@@ -739,8 +758,7 @@ watch(newItemsCount, (count) => {
   color: theme("colors.gray.400");
 }
 
-.date-filter,
-.sort-select {
+.date-filter {
   padding: 0.75rem;
   border: 1px solid theme("colors.gray.300");
   border-radius: 0.5rem;
@@ -751,15 +769,13 @@ watch(newItemsCount, (count) => {
   transition: all 0.2s ease;
 }
 
-.date-filter:focus,
-.sort-select:focus {
+.date-filter:focus {
   outline: none;
   border-color: theme("colors.knue.primary");
   box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
 }
 
-.date-filter:hover,
-.sort-select:hover {
+.date-filter:hover {
   border-color: theme("colors.gray.400");
 }
 
@@ -787,6 +803,31 @@ watch(newItemsCount, (count) => {
   font-size: 0.75rem;
   border: none;
   cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.filter-tag:hover {
+  background: theme("colors.blue.700");
+  transform: translateY(-1px);
+}
+
+.blocked-keyword-tag {
+  background: theme("colors.red.500");
+  color: white;
+}
+
+.blocked-keyword-tag:hover {
+  background: theme("colors.red.600");
+}
+
+.more-keywords-tag {
+  background: theme("colors.gray.500");
+  color: white;
+}
+
+.more-keywords-tag:hover {
+  background: theme("colors.gray.600");
 }
 
 /* Main Content */
@@ -927,6 +968,11 @@ watch(newItemsCount, (count) => {
   color: theme("colors.gray.600");
 }
 
+.stat-item.filter-stat {
+  color: theme("colors.red.600");
+  font-weight: 500;
+}
+
 /* Feed Items */
 .feed-items {
   display: flex;
@@ -975,12 +1021,14 @@ watch(newItemsCount, (count) => {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
+    align-items: start; /* Prevent items from stretching to match row height */
   }
 
   .group-items {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
+    align-items: start; /* Prevent items from stretching to match row height */
   }
 }
 
@@ -988,10 +1036,12 @@ watch(newItemsCount, (count) => {
 @media (min-width: 1400px) {
   .simple-items {
     grid-template-columns: repeat(3, 1fr);
+    align-items: start; /* Prevent items from stretching to match row height */
   }
 
   .group-items {
     grid-template-columns: repeat(3, 1fr);
+    align-items: start; /* Prevent items from stretching to match row height */
   }
 }
 
@@ -1128,8 +1178,7 @@ watch(newItemsCount, (count) => {
     min-width: unset;
   }
 
-  .date-filter,
-  .sort-select {
+  .date-filter {
     width: 100%;
     min-width: unset;
   }
@@ -1161,226 +1210,4 @@ watch(newItemsCount, (count) => {
   }
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .rss-feed-list {
-    background: theme("colors.gray.900");
-  }
-
-  .filter-bar {
-    background: theme("colors.gray.800");
-    border-color: theme("colors.gray.700");
-  }
-
-  .search-input {
-    background: theme("colors.gray.700");
-    border-color: theme("colors.gray.600");
-    color: theme("colors.gray.100");
-  }
-
-  .search-input:focus {
-    border-color: theme("colors.knue.primary");
-    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.2);
-  }
-
-  .search-input::placeholder {
-    color: theme("colors.gray.400");
-  }
-
-  .search-icon {
-    color: theme("colors.gray.400");
-  }
-
-  .date-filter,
-  .sort-select {
-    background: theme("colors.gray.700");
-    border-color: theme("colors.gray.600");
-    color: theme("colors.gray.100");
-  }
-
-  .filter-tag {
-    background: theme("colors.gray.700");
-    color: theme("colors.gray.200");
-  }
-
-  .filter-tag:hover {
-    background: theme("colors.gray.600");
-  }
-
-  .filter-label {
-    color: theme("colors.gray.400");
-  }
-
-  .stats-summary {
-    background: theme("colors.gray.800");
-  }
-
-  .date-header {
-    background: theme("colors.gray.800");
-    color: theme("colors.gray.100");
-  }
-
-  .loading-message {
-    color: theme("colors.gray.300");
-  }
-
-  .error-message {
-    color: theme("colors.red.300");
-    background: theme("colors.red.900");
-    border-color: theme("colors.red.700");
-  }
-
-  .selected-departments-info {
-    background: theme("colors.gray.800");
-    border-color: theme("colors.gray.700");
-  }
-
-  .departments-title {
-    color: theme("colors.gray.300");
-  }
-
-  .department-count {
-    color: theme("colors.gray.400");
-  }
-
-  .settings-link {
-    background: theme("colors.gray.700");
-    border-color: theme("colors.gray.600");
-    color: theme("colors.gray.300");
-  }
-
-  .settings-link:hover {
-    background: theme("colors.gray.600");
-    border-color: theme("colors.gray.500");
-    color: theme("colors.knue.primary");
-  }
-
-  .department-chip {
-    background: theme("colors.blue.900");
-    border-color: theme("colors.blue.700");
-    color: theme("colors.blue.200");
-  }
-
-  .more-departments {
-    background: theme("colors.gray.700");
-    color: theme("colors.gray.300");
-  }
-}
-
-/* Dark Mode Support via class (for manual theme switching) */
-.dark .rss-feed-list {
-  background: theme("colors.gray.900");
-}
-
-.dark .filter-bar {
-  background: theme("colors.gray.800");
-  border-color: theme("colors.gray.700");
-}
-
-.dark .app-title {
-  color: theme("colors.gray.100");
-}
-
-.dark .app-subtitle {
-  color: theme("colors.gray.400");
-}
-
-.dark .filter-bar {
-  background: theme("colors.gray.800");
-  border-color: theme("colors.gray.700");
-}
-
-.dark .search-input {
-  background: theme("colors.gray.700");
-  border-color: theme("colors.gray.600");
-  color: theme("colors.gray.100");
-}
-
-.dark .search-input:focus {
-  border-color: theme("colors.knue.primary");
-  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.2);
-}
-
-.dark .search-input::placeholder {
-  color: theme("colors.gray.400");
-}
-
-.dark .search-icon {
-  color: theme("colors.gray.400");
-}
-
-.dark .date-filter,
-.dark .sort-select {
-  background: theme("colors.gray.700");
-  border-color: theme("colors.gray.600");
-  color: theme("colors.gray.100");
-}
-
-.dark .filter-tag {
-  background: theme("colors.gray.700");
-  color: theme("colors.gray.200");
-}
-
-.dark .filter-tag:hover {
-  background: theme("colors.gray.600");
-}
-
-.dark .filter-label {
-  color: theme("colors.gray.400");
-}
-
-.dark .stats-summary {
-  background: theme("colors.gray.800");
-}
-
-.dark .date-header {
-  background: theme("colors.gray.800");
-  color: theme("colors.gray.100");
-}
-
-.dark .loading-message {
-  color: theme("colors.gray.300");
-}
-
-.dark .error-message {
-  color: theme("colors.red.300");
-  background: theme("colors.red.900");
-  border-color: theme("colors.red.700");
-}
-
-.dark .selected-departments-info {
-  background: theme("colors.gray.800");
-  border-color: theme("colors.gray.700");
-}
-
-.dark .departments-title {
-  color: theme("colors.gray.300");
-}
-
-.dark .department-count {
-  color: theme("colors.gray.400");
-}
-
-.dark .settings-link {
-  background: theme("colors.gray.700");
-  border-color: theme("colors.gray.600");
-  color: theme("colors.gray.300");
-}
-
-.dark .settings-link:hover {
-  background: theme("colors.gray.600");
-  border-color: theme("colors.gray.500");
-  color: theme("colors.knue.primary");
-}
-
-.dark .department-chip {
-  background: theme("colors.blue.900");
-  border-color: theme("colors.blue.700");
-  color: theme("colors.blue.200");
-}
-
-.dark .more-departments {
-  background: theme("colors.gray.700");
-  color: theme("colors.gray.300");
-}
 </style>

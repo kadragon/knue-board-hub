@@ -156,13 +156,13 @@ const iconClass = computed(() => {
   
   switch (props.iconColor) {
     case 'blue':
-      classes.push('text-blue-400')
+      classes.push('text-knue-primary')
       break
     case 'green':
       classes.push('text-green-400')
       break
     case 'yellow':
-      classes.push('text-yellow-400')
+      classes.push('text-knue-accent')
       break
     case 'red':
       classes.push('text-red-400')
@@ -273,7 +273,7 @@ const descriptionClass = computed(() => {
 .empty-title {
   margin: 0;
   font-weight: 600;
-  color: theme('colors.gray.900');
+  color: theme('colors.knue.primary');
   line-height: 1.25;
 }
 
@@ -327,9 +327,9 @@ const descriptionClass = computed(() => {
   transform: translateX(-50%);
   width: 200px;
   height: 200px;
-  background: linear-gradient(45deg, theme('colors.blue.50'), theme('colors.purple.50'));
+  background: radial-gradient(circle, rgba(7, 45, 110, 0.1), rgba(3, 81, 156, 0.05));
   border-radius: 50%;
-  opacity: 0.3;
+  opacity: 0.4;
   z-index: -1;
 }
 
@@ -356,20 +356,6 @@ const descriptionClass = computed(() => {
   }
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .empty-title {
-    color: theme('colors.gray.100');
-  }
-  
-  .empty-description {
-    color: theme('colors.gray.400');
-  }
-  
-  .empty-illustration::before {
-    background: linear-gradient(45deg, theme('colors.blue.900'), theme('colors.purple.900'));
-  }
-}
 
 /* Accessibility */
 .empty-state[role="status"] {

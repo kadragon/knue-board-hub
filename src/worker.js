@@ -91,10 +91,58 @@ app.get('/api/rss/items', async (c) => {
         limit: options.limit,
         offset: options.offset,
         hasMore: result.total > (options.offset + options.limit)
-      }
+      },
     })
   } catch (error) {
     console.error('Error fetching RSS items:', error)
+    return c.json({ success: false, error: error.message }, 500)
+  }
+})
+
+
+
+// Debug endpoint
+app.get('/api/debug/rss', async (c) => {
+  try {
+    const query = c.req.query()
+    const options = {
+      departments: query.departments?.split(',') || null,
+      limit: parseInt(query.limit) || 10,
+      offset: parseInt(query.offset) || 0,
+      search: query.search || null,
+      dateFilter: query.dateFilter || 'all',
+      sortBy: query.sortBy || 'date-desc'
+    }
+    
+    // Get raw department counts from rss_cache
+    const countQuery = `
+      SELECT d.id, d.name, COUNT(rc.id) as item_count
+      FROM departments d
+      LEFT JOIN rss_cache rc ON d.id = rc.department_id
+      GROUP BY d.id, d.name
+      ORDER BY d.name
+    `
+    const countResult = await c.env.DB.prepare(countQuery).all()
+    
+    // Get the specific query result
+    const result = await RssService.getItems(c.env.DB, options)
+    
+    return c.json({
+      success: true,
+      options,
+      departmentCounts: countResult.results || [],
+      queryResult: {
+        total: result.total,
+        itemCount: result.items.length,
+        itemsByDept: result.items.reduce((acc, item) => {
+          const dept = item.department?.name || 'unknown'
+          acc[dept] = (acc[dept] || 0) + 1
+          return acc
+        }, {})
+      }
+    })
+  } catch (error) {
+    console.error('Debug error:', error)
     return c.json({ success: false, error: error.message }, 500)
   }
 })

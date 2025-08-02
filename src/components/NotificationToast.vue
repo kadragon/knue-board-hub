@@ -366,10 +366,12 @@ onUnmounted(() => {
 .toast-action-btn.primary {
   background: theme('colors.knue.primary');
   color: white;
+  border-radius: 0.5rem;
 }
 
 .toast-action-btn.primary:hover {
   background: theme('colors.knue.secondary');
+  transform: translateY(-1px);
 }
 
 .toast-action-btn.secondary {
@@ -539,41 +541,4 @@ onUnmounted(() => {
   }
 }
 
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  .toast-item {
-    background: theme('colors.gray.800');
-    border-color: theme('colors.gray.700');
-  }
-  
-  .toast-title {
-    color: theme('colors.gray.100');
-  }
-  
-  .toast-message {
-    color: theme('colors.gray.300');
-  }
-  
-  .toast-suggestion {
-    color: theme('colors.gray.400');
-  }
-  
-  .toast-close {
-    color: theme('colors.gray.500');
-  }
-  
-  .toast-close:hover {
-    background: theme('colors.gray.700');
-    color: theme('colors.gray.300');
-  }
-  
-  .toast-action-btn.secondary {
-    background: theme('colors.gray.700');
-    color: theme('colors.gray.200');
-  }
-  
-  .toast-action-btn.secondary:hover {
-    background: theme('colors.gray.600');
-  }
-}
 </style>
