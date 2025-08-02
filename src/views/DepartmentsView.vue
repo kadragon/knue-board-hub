@@ -321,7 +321,9 @@ const {
   removeBlockedKeyword,
   clearBlockedKeywords,
   importKeywords: importKeywordsFromText,
-  exportKeywords: exportKeywordsToText
+  exportKeywords: exportKeywordsToText,
+  filterItems,
+  getFilterStats
 } = useKeywordFilter()
 
 // State
@@ -384,12 +386,9 @@ const lastUpdateTime = computed(() => lastUpdate.value)
 
 // Keyword filter computed
 const filterStats = computed(() => {
-  if (!hasBlockedKeywords.value || allItems.value.length === 0) return null
-  // Basic filter statistics - we'll handle this locally since getFilterStats was removed
-  return {
-    blockedCount: 0,
-    blockPercentage: 0
-  }
+  if (!hasBlockedKeywords.value || allItems.value.length === 0) return null;
+  const filtered = filterItems(allItems.value);
+  return getFilterStats(allItems.value, filtered);
 })
 
 // Methods

@@ -505,10 +505,10 @@ function handleKeydown(event) {
   // Alt + 1-4 for quick navigation
   if (event.altKey && /^[1-4]$/.test(event.key)) {
     event.preventDefault();
-    const routes = ['home', 'departments', 'settings', 'about'];
-    const routeName = routes[parseInt(event.key) - 1];
-    if (routeName) {
-      router.push({ name: routeName });
+    const index = parseInt(event.key) - 1;
+    const route = navRoutes.value[index];
+    if (route) {
+      router.push({ name: route.name });
     }
     return;
   }
